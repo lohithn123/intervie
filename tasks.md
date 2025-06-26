@@ -117,7 +117,7 @@ Objective: Add advanced features to enhance user experience, security, and funct
 [x] Implement user-specific interview history and article ownership.
 [x] Add role-based access control (admin, user, guest).
 
-[x] 5.2: Interview Templates for Different Domains
+[x] 5.2: Interview Templates for Different Domains ✅
 
 [x] Create a templates model to store predefined interview structures.
 [x] Define template schemas with:
@@ -130,22 +130,22 @@ Objective: Add advanced features to enhance user experience, security, and funct
 [x] Add template selection to the interview start flow.
 [x] Implement template-specific voice personas.
 
-[ ] 5.3: Analytics Dashboard
+[x] 5.3: Analytics Dashboard ✅
 
-[ ] Install dashboard dependencies: plotly, dash or streamlit.
-[ ] Create analytics models to track:
-[ ] Interview duration and completion rates
-[ ] Most common topics
-[ ] Article generation success rates
-[ ] User engagement metrics
-[ ] API usage statistics
-[ ] Build dashboard views:
-[ ] User activity overview
-[ ] Interview performance metrics
-[ ] Article quality scores (based on editor iterations)
-[ ] Cost analysis (API usage)
-[ ] Implement real-time updates using WebSockets.
-[ ] Add export functionality for reports.
+[x] Install dashboard dependencies: plotly, dash or streamlit.
+[x] Create analytics models to track:
+[x] Interview duration and completion rates
+[x] Most common topics
+[x] Article generation success rates
+[x] User engagement metrics
+[x] API usage statistics
+[x] Build dashboard views:
+[x] User activity overview
+[x] Interview performance metrics
+[x] Article quality scores (based on editor iterations)
+[x] Cost analysis (API usage)
+[x] Implement real-time updates using WebSockets.
+[x] Add export functionality for reports.
 
 [ ] 5.4: Export Options (PDF, Markdown, DOCX)
 

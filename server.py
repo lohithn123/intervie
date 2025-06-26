@@ -12,6 +12,7 @@ from api.agents import writer_agent, editor_agent, mock_interview, WriterContext
 from api.interview_handler import handle_interview_audio_stream
 from api.auth_routes import router as auth_router
 from api.template_routes import router as template_router
+from api.analytics_routes import router as analytics_router
 from auth.auth_utils import get_current_active_user
 from schemas import InterviewTranscript, ArticleDraft
 from db.models import User
@@ -23,6 +24,9 @@ app.include_router(auth_router)
 
 # Include template routes
 app.include_router(template_router)
+
+# Include analytics routes
+app.include_router(analytics_router)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -248,4 +252,8 @@ def root():
 
 @app.get("/admin/templates")
 def template_admin():
-    return FileResponse("static/template_admin.html") 
+    return FileResponse("static/template_admin.html")
+
+@app.get("/admin/analytics")
+def analytics_dashboard():
+    return FileResponse("static/analytics_dashboard.html") 

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Interviewer Analytics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        font-weight: 300;
+        margin-bottom: 0.5rem;
+      }
+
+      .header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 3rem;
+        font-size: 1.2rem;
+        color: #666;
+      }
+
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        border: 1px solid #f5c6cb;
+      }
+
+      .auth-prompt {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .auth-prompt button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 0 10px;
+      }
+
+      .auth-prompt button:hover {
+        background: #5a6fd8;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .metric-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        border-left: 4px solid #667eea;
+      }
+
+      .metric-card h3 {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+
+      .metric-card .value {
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .chart-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+      }
+
+      .chart-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+      }
+
+      .refresh-btn {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        font-size: 16px;
+        z-index: 1000;
+      }
+
+      .refresh-btn:hover {
+        background: #5a6fd8;
+        transform: scale(1.05);
+      }
+
+      .last-updated {
+        text-align: center;
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 2rem;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 1rem;
+        }
+
+        .header h1 {
+          font-size: 2rem;
+        }
+
+        .charts-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .metrics-grid {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Analytics Dashboard</h1>
+      <p>AI Interviewer Platform Performance Insights</p>
+    </div>
+
+    <div class="container">
+      <div id="auth-prompt" class="auth-prompt" style="display: none">
+        <h2>Authentication Required</h2>
+        <p>Please log in to access the analytics dashboard.</p>
+        <button
+          onclick="window.location.href='/static/interview_client_auth.html'"
+        >
+          Go to Login
+        </button>
+      </div>
+
+      <div id="loading" class="loading">
+        <p>🔄 Loading analytics data...</p>
+      </div>
+
+      <div id="error" class="error" style="display: none"></div>
+
+      <div id="dashboard-content" style="display: none">
+        <!-- Key Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <h3>Total Users</h3>
+            <div class="value" id="total-users">0</div>
+          </div>
+          <div class="metric-card">
+            <h3>Active Today</h3>
+            <div class="value" id="active-users">0</div>
+          </div>
+          <div class="metric-card">
+            <h3>Completion Rate</h3>
+            <div class="value" id="completion-rate">0%</div>
+          </div>
+          <div class="metric-card">
+            <h3>Total API Cost</h3>
+            <div class="value" id="api-cost">$0.00</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+          <div class="chart-container">
+            <div class="chart-title">User Activity Over Time</div>
+            <div id="user-activity-chart"></div>
+          </div>
+          <div class="chart-container">
+            <div class="chart-title">Interview Completion Rate</div>
+            <div id="completion-chart"></div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-container">
+            <div class="chart-title">Popular Interview Topics</div>
+            <div id="topics-chart"></div>
+          </div>
+          <div class="chart-container">
+            <div class="chart-title">API Cost Breakdown</div>
+            <div id="cost-chart"></div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-container">
+            <div class="chart-title">Template Usage</div>
+            <div id="templates-chart"></div>
+          </div>
+          <div class="chart-container">
+            <div class="chart-title">Interview Duration Distribution</div>
+            <div id="duration-chart"></div>
+          </div>
+        </div>
+
+        <div class="last-updated">
+          Last updated: <span id="last-update-time"></span>
+        </div>
+      </div>
+    </div>
+
+    <button
+      class="refresh-btn"
+      onclick="loadDashboardData()"
+      title="Refresh Data"
+    >
+      🔄
+    </button>
+
+    <script>
+      let authToken = localStorage.getItem("access_token");
+      let dashboardData = null;
+
+      // Auto-refresh interval (30 seconds)
+      setInterval(loadDashboardData, 30000);
+
+      async function checkAuth() {
+        if (!authToken) {
+          document.getElementById("auth-prompt").style.display = "block";
+          document.getElementById("loading").style.display = "none";
+          return false;
+        }
+
+        try {
+          const response = await fetch("/auth/me", {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+
+          if (response.status === 401) {
+            localStorage.removeItem("access_token");
+            document.getElementById("auth-prompt").style.display = "block";
+            document.getElementById("loading").style.display = "none";
+            return false;
+          }
+
+          const user = await response.json();
+          if (user.role !== "admin") {
+            showError("Access denied. Admin privileges required.");
+            return false;
+          }
+
+          return true;
+        } catch (error) {
+          console.error("Auth check failed:", error);
+          showError("Authentication check failed. Please try again.");
+          return false;
+        }
+      }
+
+      async function loadDashboardData() {
+        const isAuthenticated = await checkAuth();
+        if (!isAuthenticated) return;
+
+        try {
+          const response = await fetch("/analytics/dashboard", {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          dashboardData = await response.json();
+          renderDashboard();
+        } catch (error) {
+          console.error("Failed to load dashboard data:", error);
+          showError(`Failed to load analytics data: ${error.message}`);
+        }
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById("error");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+        document.getElementById("loading").style.display = "none";
+      }
+
+      function renderDashboard() {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("error").style.display = "none";
+        document.getElementById("dashboard-content").style.display = "block";
+
+        // Update metrics
+        document.getElementById("total-users").textContent =
+          dashboardData.total_users || 0;
+        document.getElementById("active-users").textContent =
+          dashboardData.active_users_today || 0;
+        document.getElementById("completion-rate").textContent = `${
+          dashboardData.completion_rate || 0
+        }%`;
+        document.getElementById("api-cost").textContent = `$${(
+          dashboardData.total_api_cost || 0
+        ).toFixed(2)}`;
+
+        // Render charts
+        renderUserActivityChart();
+        renderCompletionChart();
+        renderTopicsChart();
+        renderCostChart();
+        renderTemplatesChart();
+        renderDurationChart();
+
+        // Update timestamp
+        document.getElementById("last-update-time").textContent =
+          new Date().toLocaleString();
+      }
+
+      function renderUserActivityChart() {
+        if (!dashboardData.user_activity) return;
+
+        const dates = dashboardData.user_activity.map((d) => d.date);
+        const interviews = dashboardData.user_activity.map((d) => d.interviews);
+        const activeUsers = dashboardData.user_activity.map(
+          (d) => d.active_users
+        );
+
+        const trace1 = {
+          x: dates,
+          y: interviews,
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Interviews",
+          line: { color: "#667eea" },
+        };
+
+        const trace2 = {
+          x: dates,
+          y: activeUsers,
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Active Users",
+          yaxis: "y2",
+          line: { color: "#ff7f0e" },
+        };
+
+        const layout = {
+          yaxis: { title: "Interviews" },
+          yaxis2: {
+            title: "Active Users",
+            overlaying: "y",
+            side: "right",
+          },
+          margin: { t: 40, r: 50, l: 50, b: 50 },
+        };
+
+        Plotly.newPlot("user-activity-chart", [trace1, trace2], layout, {
+          responsive: true,
+        });
+      }
+
+      function renderCompletionChart() {
+        const successful = dashboardData.successful_interviews || 0;
+        const total = dashboardData.total_interviews || 0;
+        const failed = total - successful;
+
+        const data = [
+          {
+            values: [successful, failed],
+            labels: ["Completed", "Failed"],
+            type: "pie",
+            hole: 0.4,
+            marker: {
+              colors: ["#2ecc71", "#e74c3c"],
+            },
+          },
+        ];
+
+        const layout = {
+          annotations: [
+            {
+              text: `${dashboardData.completion_rate || 0}%`,
+              x: 0.5,
+              y: 0.5,
+              font: { size: 20 },
+              showarrow: false,
+            },
+          ],
+          margin: { t: 40, r: 50, l: 50, b: 50 },
+        };
+
+        Plotly.newPlot("completion-chart", data, layout, { responsive: true });
+      }
+
+      function renderTopicsChart() {
+        if (!dashboardData.popular_topics) return;
+
+        const topics = dashboardData.popular_topics.slice(0, 5);
+        const data = [
+          {
+            x: topics.map((t) => t.count),
+            y: topics.map((t) => t.topic),
+            type: "bar",
+            orientation: "h",
+            marker: { color: "#667eea" },
+          },
+        ];
+
+        const layout = {
+          margin: { t: 40, r: 50, l: 120, b: 50 },
+          xaxis: { title: "Number of Interviews" },
+          yaxis: { title: "" },
+        };
+
+        Plotly.newPlot("topics-chart", data, layout, { responsive: true });
+      }
+
+      function renderCostChart() {
+        if (!dashboardData.cost_breakdown) return;
+
+        const services = Object.keys(dashboardData.cost_breakdown);
+        const costs = Object.values(dashboardData.cost_breakdown);
+
+        const data = [
+          {
+            labels: services,
+            values: costs,
+            type: "pie",
+            textinfo: "label+percent+value",
+            texttemplate: "%{label}<br>%{percent}<br>$%{value:.2f}",
+          },
+        ];
+
+        const layout = {
+          margin: { t: 40, r: 50, l: 50, b: 50 },
+        };
+
+        Plotly.newPlot("cost-chart", data, layout, { responsive: true });
+      }
+
+      function renderTemplatesChart() {
+        if (!dashboardData.popular_templates) return;
+
+        const templates = dashboardData.popular_templates.slice(0, 5);
+        const data = [
+          {
+            x: templates.map((t) => t.name),
+            y: templates.map((t) => t.count),
+            type: "bar",
+            marker: { color: "#764ba2" },
+          },
+        ];
+
+        const layout = {
+          margin: { t: 40, r: 50, l: 50, b: 80 },
+          xaxis: { title: "Template", tickangle: -45 },
+          yaxis: { title: "Usage Count" },
+        };
+
+        Plotly.newPlot("templates-chart", data, layout, { responsive: true });
+      }
+
+      function renderDurationChart() {
+        if (!dashboardData.interviews_last_7_days) return;
+
+        const durations = dashboardData.interviews_last_7_days
+          .filter((i) => i.duration)
+          .map((i) => i.duration / 60); // Convert to minutes
+
+        if (durations.length === 0) return;
+
+        const data = [
+          {
+            x: durations,
+            type: "histogram",
+            nbinsx: 20,
+            marker: { color: "#667eea" },
+          },
+        ];
+
+        const layout = {
+          margin: { t: 40, r: 50, l: 50, b: 50 },
+          xaxis: { title: "Duration (minutes)" },
+          yaxis: { title: "Count" },
+        };
+
+        Plotly.newPlot("duration-chart", data, layout, { responsive: true });
+      }
+
+      // Initialize dashboard
+      document.addEventListener("DOMContentLoaded", loadDashboardData);
+    </script>
+  </body>
+</html>

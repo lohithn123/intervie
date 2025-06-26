@@ -50,7 +50,13 @@ writer_agent = Agent(
 
 @writer_agent.system_prompt
 def writer_dynamic_prompt(ctx: WriterContext) -> str:
-    base_prompt = writer_agent._system_prompt
+    base_prompt = (
+        "You are a professional writer creating articles from interview transcripts. "
+        "Analyze the interview content and create a well-structured, engaging article. "
+        "Tailor the tone and complexity to the target audience. "
+        "If editor feedback is provided, address all critiques in your revision. "
+        "Include a compelling title that captures the essence of the interview."
+    )
     if ctx.editor_feedback:
         feedback_text = "\n".join(f"- {critique}" for critique in ctx.editor_feedback)
         return f"{base_prompt}\n\nEditor feedback from previous version:\n{feedback_text}\n\nAddress all these points in your revision."

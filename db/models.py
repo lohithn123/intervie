@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -75,3 +75,76 @@ class InterviewTemplate(Base):
     # Relationships
     creator = relationship("User")
     interviews = relationship("Interview", back_populates="template")
+
+
+class InterviewSession(Base):
+    """Track detailed session metrics for analytics"""
+    __tablename__ = "interview_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    interview_id = Column(Integer, ForeignKey("interviews.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    started_at = Column(DateTime, nullable=False)
+    ended_at = Column(DateTime)
+    duration_seconds = Column(Integer)
+    questions_asked = Column(Integer, default=0)
+    words_spoken = Column(Integer, default=0)
+    completion_status = Column(String(50))  # completed, abandoned, error
+    transcript_quality_score = Column(Float)  # 0.0 to 1.0
+    created_at = Column(DateTime, server_default=func.now())
+    
+    # Relationships
+    interview = relationship("Interview")
+    user = relationship("User")
+
+
+class APIUsageMetrics(Base):
+    """Track API usage for cost analysis"""
+    __tablename__ = "api_usage_metrics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    service_type = Column(String(50), nullable=False)  # openai, elevenlabs, etc.
+    operation = Column(String(100), nullable=False)  # tts, stt, completion
+    tokens_used = Column(Integer)
+    characters_processed = Column(Integer)
+    cost_usd = Column(Float)
+    timestamp = Column(DateTime, server_default=func.now())
+    
+    # Relationships
+    user = relationship("User")
+
+
+class UserEngagementMetrics(Base):
+    """Track user engagement patterns"""
+    __tablename__ = "user_engagement_metrics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(DateTime, nullable=False)
+    interviews_started = Column(Integer, default=0)
+    interviews_completed = Column(Integer, default=0)
+    total_session_time = Column(Integer, default=0)  # seconds
+    articles_generated = Column(Integer, default=0)
+    templates_used = Column(String(255))  # comma-separated template IDs
+    login_count = Column(Integer, default=0)
+    
+    # Relationships
+    user = relationship("User")
+
+
+class SystemMetrics(Base):
+    """Track system-wide performance metrics"""
+    __tablename__ = "system_metrics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, nullable=False)
+    active_users = Column(Integer, default=0)
+    total_interviews = Column(Integer, default=0)
+    successful_interviews = Column(Integer, default=0)
+    failed_interviews = Column(Integer, default=0)
+    average_interview_duration = Column(Float)  # seconds
+    average_editor_iterations = Column(Float)
+    total_api_cost = Column(Float, default=0.0)
+    popular_topics = Column(Text)  # JSON array of topics
+    popular_templates = Column(Text)  # JSON array of template usage

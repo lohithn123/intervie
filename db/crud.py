@@ -1,8 +1,11 @@
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .models import Interview, Article, User, InterviewTemplate
-from typing import Optional, List
+from sqlalchemy import func, and_, desc
+from .models import Interview, Article, User, InterviewTemplate, InterviewSession, APIUsageMetrics, UserEngagementMetrics, SystemMetrics
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
+import json
 
 # User CRUD operations
 async def create_user(session: AsyncSession, email: str, username: str, hashed_password: str, full_name: Optional[str] = None) -> User:
@@ -179,3 +182,295 @@ async def delete_template(session: AsyncSession, template_id: int) -> bool:
     template.is_active = False
     await session.commit()
     return True
+
+
+# Analytics CRUD operations
+
+async def create_interview_session(
+    session: AsyncSession,
+    interview_id: int,
+    user_id: Optional[int] = None,
+    started_at: datetime = None
+) -> InterviewSession:
+    """Create a new interview session tracking record"""
+    if started_at is None:
+        started_at = datetime.utcnow()
+    
+    session_record = InterviewSession(
+        interview_id=interview_id,
+        user_id=user_id,
+        started_at=started_at
+    )
+    session.add(session_record)
+    await session.commit()
+    await session.refresh(session_record)
+    return session_record
+
+
+async def update_interview_session(
+    session: AsyncSession,
+    session_id: int,
+    **kwargs
+) -> Optional[InterviewSession]:
+    """Update interview session with completion data"""
+    query = select(InterviewSession).where(InterviewSession.id == session_id)
+    result = await session.execute(query)
+    session_record = result.scalar_one_or_none()
+    
+    if session_record:
+        for key, value in kwargs.items():
+            if hasattr(session_record, key):
+                setattr(session_record, key, value)
+        await session.commit()
+        await session.refresh(session_record)
+    
+    return session_record
+
+
+async def track_api_usage(
+    session: AsyncSession,
+    service_type: str,
+    operation: str,
+    user_id: Optional[int] = None,
+    tokens_used: Optional[int] = None,
+    characters_processed: Optional[int] = None,
+    cost_usd: Optional[float] = None
+) -> APIUsageMetrics:
+    """Track API usage for cost analysis"""
+    usage_record = APIUsageMetrics(
+        user_id=user_id,
+        service_type=service_type,
+        operation=operation,
+        tokens_used=tokens_used,
+        characters_processed=characters_processed,
+        cost_usd=cost_usd
+    )
+    session.add(usage_record)
+    await session.commit()
+    await session.refresh(usage_record)
+    return usage_record
+
+
+async def update_user_engagement(
+    session: AsyncSession,
+    user_id: int,
+    date: datetime,
+    interviews_started: int = 0,
+    interviews_completed: int = 0,
+    session_time: int = 0,
+    articles_generated: int = 0,
+    template_id: Optional[int] = None,
+    login_count: int = 0
+) -> UserEngagementMetrics:
+    """Update daily user engagement metrics"""
+    # Check if record exists for this user and date
+    query = select(UserEngagementMetrics).where(
+        and_(
+            UserEngagementMetrics.user_id == user_id,
+            func.date(UserEngagementMetrics.date) == date.date()
+        )
+    )
+    result = await session.execute(query)
+    engagement = result.scalar_one_or_none()
+    
+    if engagement:
+        # Update existing record
+        engagement.interviews_started += interviews_started
+        engagement.interviews_completed += interviews_completed
+        engagement.total_session_time += session_time
+        engagement.articles_generated += articles_generated
+        engagement.login_count += login_count
+        
+        if template_id:
+            templates = engagement.templates_used.split(',') if engagement.templates_used else []
+            if str(template_id) not in templates:
+                templates.append(str(template_id))
+                engagement.templates_used = ','.join(templates)
+    else:
+        # Create new record
+        engagement = UserEngagementMetrics(
+            user_id=user_id,
+            date=date,
+            interviews_started=interviews_started,
+            interviews_completed=interviews_completed,
+            total_session_time=session_time,
+            articles_generated=articles_generated,
+            templates_used=str(template_id) if template_id else None,
+            login_count=login_count
+        )
+        session.add(engagement)
+    
+    await session.commit()
+    await session.refresh(engagement)
+    return engagement
+
+
+async def get_dashboard_data(session: AsyncSession) -> Dict[str, Any]:
+    """Get comprehensive analytics data for dashboard"""
+    now = datetime.utcnow()
+    today = now.date()
+    week_ago = today - timedelta(days=7)
+    
+    # Basic counts
+    total_users_result = await session.execute(select(func.count(User.id)))
+    total_users = total_users_result.scalar()
+    
+    total_interviews_result = await session.execute(select(func.count(Interview.id)))
+    total_interviews = total_interviews_result.scalar()
+    
+    successful_interviews_result = await session.execute(
+        select(func.count(Interview.id)).where(Interview.status == 'completed')
+    )
+    successful_interviews = successful_interviews_result.scalar()
+    
+    # Active users today
+    active_users_today_result = await session.execute(
+        select(func.count(func.distinct(UserEngagementMetrics.user_id)))
+        .where(func.date(UserEngagementMetrics.date) == today)
+    )
+    active_users_today = active_users_today_result.scalar() or 0
+    
+    # Recent interviews
+    recent_interviews_result = await session.execute(
+        select(Interview)
+        .where(Interview.created_at >= datetime.combine(week_ago, datetime.min.time()))
+        .order_by(Interview.created_at.desc())
+        .limit(50)
+    )
+    recent_interviews = recent_interviews_result.scalars().all()
+    
+    # Popular topics
+    popular_topics_result = await session.execute(
+        select(Interview.topic, func.count(Interview.topic).label('count'))
+        .group_by(Interview.topic)
+        .order_by(desc('count'))
+        .limit(10)
+    )
+    popular_topics = [{"topic": row[0], "count": row[1]} for row in popular_topics_result.fetchall()]
+    
+    # Popular templates
+    popular_templates_result = await session.execute(
+        select(InterviewTemplate.name, func.count(Interview.template_id).label('count'))
+        .join(Interview, Interview.template_id == InterviewTemplate.id)
+        .group_by(InterviewTemplate.name)
+        .order_by(desc('count'))
+        .limit(10)
+    )
+    popular_templates = [{"name": row[0], "count": row[1]} for row in popular_templates_result.fetchall()]
+    
+    # Average metrics
+    avg_duration_result = await session.execute(
+        select(func.avg(Interview.duration_seconds))
+        .where(Interview.duration_seconds.isnot(None))
+    )
+    avg_duration = avg_duration_result.scalar()
+    
+    avg_iterations_result = await session.execute(
+        select(func.avg(Article.editor_iterations))
+    )
+    avg_iterations = avg_iterations_result.scalar()
+    
+    # API costs
+    total_cost_result = await session.execute(
+        select(func.sum(APIUsageMetrics.cost_usd))
+    )
+    total_cost = total_cost_result.scalar() or 0.0
+    
+    # Cost breakdown by service
+    cost_breakdown_result = await session.execute(
+        select(APIUsageMetrics.service_type, func.sum(APIUsageMetrics.cost_usd))
+        .group_by(APIUsageMetrics.service_type)
+    )
+    cost_breakdown = {row[0]: row[1] for row in cost_breakdown_result.fetchall()}
+    
+    # User activity (last 7 days)
+    user_activity_result = await session.execute(
+        select(
+            func.date(UserEngagementMetrics.date).label('date'),
+            func.sum(UserEngagementMetrics.interviews_started).label('interviews'),
+            func.count(func.distinct(UserEngagementMetrics.user_id)).label('active_users')
+        )
+        .where(UserEngagementMetrics.date >= datetime.combine(week_ago, datetime.min.time()))
+        .group_by(func.date(UserEngagementMetrics.date))
+        .order_by('date')
+    )
+    user_activity = [
+        {
+            "date": row[0].isoformat(),
+            "interviews": row[1] or 0,
+            "active_users": row[2] or 0
+        }
+        for row in user_activity_result.fetchall()
+    ]
+    
+    # Calculate completion rate
+    completion_rate = (successful_interviews / total_interviews * 100) if total_interviews > 0 else 0
+    
+    # Prepare interviews for last 7 days
+    interviews_last_7_days = [
+        {
+            "id": interview.id,
+            "topic": interview.topic,
+            "status": interview.status,
+            "created_at": interview.created_at.isoformat(),
+            "duration": interview.duration_seconds
+        }
+        for interview in recent_interviews
+    ]
+    
+    return {
+        "total_users": total_users,
+        "active_users_today": active_users_today,
+        "total_interviews": total_interviews,
+        "successful_interviews": successful_interviews,
+        "completion_rate": round(completion_rate, 2),
+        "interviews_last_7_days": interviews_last_7_days,
+        "popular_topics": popular_topics,
+        "popular_templates": popular_templates,
+        "average_interview_duration": avg_duration,
+        "average_editor_iterations": avg_iterations,
+        "transcript_quality_score": None,  # Would need implementation
+        "total_api_cost": total_cost,
+        "cost_breakdown": cost_breakdown,
+        "user_activity": user_activity,
+        "retention_metrics": {}  # Would need more complex calculation
+    }
+
+
+async def get_user_analytics(session: AsyncSession, user_id: int) -> Dict[str, Any]:
+    """Get analytics specific to a user"""
+    # User's interviews
+    user_interviews_result = await session.execute(
+        select(Interview).where(Interview.user_id == user_id)
+    )
+    user_interviews = user_interviews_result.scalars().all()
+    
+    # User engagement over time
+    engagement_result = await session.execute(
+        select(UserEngagementMetrics)
+        .where(UserEngagementMetrics.user_id == user_id)
+        .order_by(UserEngagementMetrics.date.desc())
+        .limit(30)
+    )
+    engagement_history = engagement_result.scalars().all()
+    
+    # User's API usage costs
+    user_costs_result = await session.execute(
+        select(func.sum(APIUsageMetrics.cost_usd))
+        .where(APIUsageMetrics.user_id == user_id)
+    )
+    user_total_cost = user_costs_result.scalar() or 0.0
+    
+    return {
+        "total_interviews": len(user_interviews),
+        "completed_interviews": len([i for i in user_interviews if i.status == 'completed']),
+        "total_cost": user_total_cost,
+        "engagement_history": [
+            {
+                "date": eng.date.isoformat(),
+                "interviews": eng.interviews_completed,
+                "session_time": eng.total_session_time
+            }
+            for eng in engagement_history
+        ]
+    }

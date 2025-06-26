@@ -33,4 +33,9 @@ requests==2.31.0  # For Docker healthcheck
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6  # Already included above
-email-validator==2.2.0 
+email-validator==2.2.0
+
+# Phase 5.3: Analytics Dashboard
+plotly==6.1.2
+dash==3.0.4
+pandas==2.2.3 
