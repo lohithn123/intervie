@@ -56,4 +56,43 @@ class TokenData(BaseModel):
     
 class LoginRequest(BaseModel):
     username: str  # Can be username or email
-    password: str 
+    password: str
+
+
+# Interview Templates
+class TemplateBase(BaseModel):
+    name: str
+    domain: str
+    description: Optional[str] = None
+    initial_questions: List[str]
+    follow_up_patterns: Optional[dict] = None
+    target_style: Optional[str] = "conversational"
+    target_tone: Optional[str] = "professional"
+    voice_persona: Optional[str] = "neutral"
+
+
+class TemplateCreate(TemplateBase):
+    pass
+
+
+class TemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    domain: Optional[str] = None
+    description: Optional[str] = None
+    initial_questions: Optional[List[str]] = None
+    follow_up_patterns: Optional[dict] = None
+    target_style: Optional[str] = None
+    target_tone: Optional[str] = None
+    voice_persona: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class TemplateResponse(TemplateBase):
+    id: int
+    is_active: bool
+    created_by: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True 

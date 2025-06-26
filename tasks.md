@@ -107,7 +107,7 @@ Phase 5: Optional Enhancements (Future Development)
 
 Objective: Add advanced features to enhance user experience, security, and functionality.
 
-[ ] 5.1: Authentication and User Management
+[x] 5.1: Authentication and User Management
 
 [x] Install authentication dependencies: python-jose[cryptography], passlib[bcrypt], python-multipart.
 [x] Create a user model in SQLAlchemy with email, hashed password, and role fields.
@@ -115,20 +115,20 @@ Objective: Add advanced features to enhance user experience, security, and funct
 [x] Create endpoints for user registration, login, and token refresh.
 [x] Add authentication middleware to protect interview endpoints.
 [x] Implement user-specific interview history and article ownership.
-[ ] Add role-based access control (admin, user, guest).
+[x] Add role-based access control (admin, user, guest).
 
-[ ] 5.2: Interview Templates for Different Domains
+[x] 5.2: Interview Templates for Different Domains
 
-[ ] Create a templates model to store predefined interview structures.
-[ ] Define template schemas with:
-[ ] Domain/category (journalism, research, marketing, etc.)
-[ ] Initial questions set
-[ ] Follow-up question patterns
-[ ] Target article style and tone
-[ ] Create an admin interface to manage templates.
-[ ] Modify the InterviewerAgent to use templates as context.
-[ ] Add template selection to the interview start flow.
-[ ] Implement template-specific voice personas.
+[x] Create a templates model to store predefined interview structures.
+[x] Define template schemas with:
+[x] Domain/category (journalism, research, marketing, etc.)
+[x] Initial questions set
+[x] Follow-up question patterns
+[x] Target article style and tone
+[x] Create an admin interface to manage templates.
+[x] Modify the InterviewerAgent to use templates as context.
+[x] Add template selection to the interview start flow.
+[x] Implement template-specific voice personas.
 
 [ ] 5.3: Analytics Dashboard
 

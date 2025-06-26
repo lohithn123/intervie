@@ -23,6 +23,9 @@ class ConversationState:
     last_activity: datetime = field(default_factory=datetime.now)
     interview_phase: str = "introduction"  # introduction, main, closing
     questions_asked: int = 0
+    template: Optional[Dict] = None  # Interview template data
+    initial_questions: List[str] = field(default_factory=list)
+    follow_up_patterns: Dict = field(default_factory=dict)
     
     def add_message(self, speaker: str, content: str):
         """Add a message to the conversation history."""
@@ -58,7 +61,8 @@ async def handle_interview_audio_stream(
     websocket,
     interview_id: int,
     topic: str,
-    target_audience: str
+    target_audience: str,
+    template: Optional[Dict] = None
 ) -> InterviewTranscript:
     """
     Handle real-time audio streaming for an interview session.
@@ -72,18 +76,36 @@ async def handle_interview_audio_stream(
     Returns:
         Complete interview transcript
     """
-    state = ConversationState(interview_id=interview_id, topic=topic)
+    state = ConversationState(
+        interview_id=interview_id, 
+        topic=topic,
+        template=template,
+        initial_questions=template.get("initial_questions", []) if template else [],
+        follow_up_patterns=template.get("follow_up_patterns", {}) if template else {}
+    )
     silence_threshold = 1.5  # seconds of silence before processing
+    
+    # Determine voice preset based on template or use default
+    voice_preset = "interviewer"
+    if template and template.get("voice_persona"):
+        # Map template voice personas to available presets
+        voice_mapping = {
+            "professional": "interviewer",
+            "friendly": "narrator",
+            "conversational": "interviewer",
+            "academic": "narrator"
+        }
+        voice_preset = voice_mapping.get(template["voice_persona"], "interviewer")
     
     try:
         # Send initial greeting
-        greeting = await generate_interviewer_greeting(topic)
+        greeting = await generate_interviewer_greeting(topic, template)
         state.add_message("Interviewer", greeting)
         
         # Synthesize and send greeting audio
         async for audio_chunk in synthesize_speech(
             greeting, 
-            voice_id=VOICE_PRESETS["interviewer"]["voice_id"]
+            voice_id=VOICE_PRESETS[voice_preset]["voice_id"]
         ):
             await websocket.send_bytes(audio_chunk)
         
@@ -120,7 +142,7 @@ async def handle_interview_audio_stream(
                 # Synthesize and send interviewer's response
                 async for audio_chunk in synthesize_speech(
                     next_question,
-                    voice_id=VOICE_PRESETS["interviewer"]["voice_id"]
+                    voice_id=VOICE_PRESETS[voice_preset]["voice_id"]
                 ):
                     await websocket.send_bytes(audio_chunk)
         
@@ -130,7 +152,7 @@ async def handle_interview_audio_stream(
         
         async for audio_chunk in synthesize_speech(
             closing,
-            voice_id=VOICE_PRESETS["interviewer"]["voice_id"]
+            voice_id=VOICE_PRESETS[voice_preset]["voice_id"]
         ):
             await websocket.send_bytes(audio_chunk)
         
@@ -178,15 +200,19 @@ async def collect_audio_until_silence(
     return audio_buffer
 
 
-async def generate_interviewer_greeting(topic: str) -> str:
+async def generate_interviewer_greeting(topic: str, template: Optional[Dict] = None) -> str:
     """Generate an appropriate greeting for the interview."""
+    style = template.get("target_style", "professional") if template else "professional"
+    tone = template.get("target_tone", "warm") if template else "warm"
+    
     prompt = f"""
-    Generate a warm, professional greeting for an interview about "{topic}".
+    Generate a {tone}, {style} greeting for an interview about "{topic}".
     The greeting should:
     - Introduce yourself as an AI interviewer
     - Briefly mention the topic
     - Make the interviewee feel comfortable
     - Be concise (2-3 sentences)
+    - Match the {style} style and {tone} tone
     """
     
     result = await interviewer_agent.run(prompt)
@@ -195,12 +221,27 @@ async def generate_interviewer_greeting(topic: str) -> str:
 
 async def generate_next_question(state: ConversationState) -> Optional[str]:
     """Generate the next interview question based on conversation context."""
+    # Use template initial questions for the first few questions if available
+    if state.initial_questions and state.questions_asked < len(state.initial_questions):
+        return state.initial_questions[state.questions_asked]
+    
     context = InterviewerPromptContext(
         topic=state.topic,
         conversation_context=state.get_context_for_agent(),
         phase=state.interview_phase,
         questions_asked=state.questions_asked
     )
+    
+    # Add template guidance if available
+    template_guidance = ""
+    if state.template:
+        style = state.template.get("target_style", "conversational")
+        tone = state.template.get("target_tone", "professional")
+        template_guidance = f"\nMaintain a {style} style with a {tone} tone."
+        
+        # Add follow-up patterns if available
+        if state.follow_up_patterns:
+            template_guidance += f"\nFollow-up patterns to consider: {json.dumps(state.follow_up_patterns)}"
     
     prompt = f"""
     Based on the conversation context, generate the next interview question.
@@ -217,6 +258,7 @@ async def generate_next_question(state: ConversationState) -> Optional[str]:
     - Explore interesting points in more depth
     - Keep questions open-ended and thought-provoking
     - In the closing phase, ask wrap-up questions
+    {template_guidance}
     
     Generate only the question, nothing else.
     """

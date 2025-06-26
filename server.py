@@ -7,9 +7,11 @@ from db import crud
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import asyncio
+import json
 from api.agents import writer_agent, editor_agent, mock_interview, WriterContext, EditorContext
 from api.interview_handler import handle_interview_audio_stream
 from api.auth_routes import router as auth_router
+from api.template_routes import router as template_router
 from auth.auth_utils import get_current_active_user
 from schemas import InterviewTranscript, ArticleDraft
 from db.models import User
@@ -18,6 +20,9 @@ app = FastAPI(title="AI Interviewer Platform", version="2.0.0")
 
 # Include authentication routes
 app.include_router(auth_router)
+
+# Include template routes
+app.include_router(template_router)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -35,6 +40,7 @@ class InterviewStartRequest(BaseModel):
     topic: str
     target_audience: str
     mode: str = "text"  # "text" or "voice"
+    template_id: Optional[int] = None  # Optional template to use
 
 class InterviewStartResponse(BaseModel):
     job_id: int
@@ -116,7 +122,8 @@ async def start_interview(
         db, 
         req.topic, 
         req.target_audience,
-        user_id=current_user.id  # Associate with current user
+        user_id=current_user.id,  # Associate with current user
+        template_id=req.template_id  # Associate with template if provided
     )
     job_status[interview.id] = "pending"
     
@@ -199,12 +206,28 @@ async def interview_audio_stream(websocket: WebSocket, job_id: int, db: AsyncSes
     job_status[job_id] = "interviewing"
     
     try:
+        # Load template if associated with interview
+        template_data = None
+        if interview.template_id:
+            template = await crud.get_template(db, interview.template_id)
+            if template:
+                template_data = {
+                    "name": template.name,
+                    "domain": template.domain,
+                    "initial_questions": json.loads(template.initial_questions),
+                    "follow_up_patterns": json.loads(template.follow_up_patterns) if template.follow_up_patterns else {},
+                    "target_style": template.target_style,
+                    "target_tone": template.target_tone,
+                    "voice_persona": template.voice_persona
+                }
+        
         # Conduct the voice interview
         transcript = await handle_interview_audio_stream(
             websocket=websocket,
             interview_id=job_id,
             topic=interview.topic,
-            target_audience=interview.target_audience
+            target_audience=interview.target_audience,
+            template=template_data
         )
         
         # Close the WebSocket
@@ -221,4 +244,8 @@ async def interview_audio_stream(websocket: WebSocket, job_id: int, db: AsyncSes
 
 @app.get("/")
 def root():
-    return FileResponse("static/interview_client_auth.html") 
+    return FileResponse("static/interview_client_auth.html")
+
+@app.get("/admin/templates")
+def template_admin():
+    return FileResponse("static/template_admin.html") 
