@@ -1,8 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./interviewer.db")
+
+# Create Base for declarative models
+Base = declarative_base()
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 

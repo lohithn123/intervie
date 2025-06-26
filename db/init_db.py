@@ -1,10 +1,13 @@
 """Initialize database tables."""
 
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from db.database import DATABASE_URL, Base
-from db.models import User, Interview, Article
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from sqlalchemy.ext.asyncio import create_async_engine
+from db.database import DATABASE_URL
+from db.models import Base, User, Interview, Article
 
 async def init_database():
     """Create all database tables."""

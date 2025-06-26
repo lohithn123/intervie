@@ -50,8 +50,7 @@ def create_refresh_token(data: dict) -> str:
     return encoded_jwt
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = None  # Will be injected by FastAPI
+    token: str = Depends(oauth2_scheme)
 ) -> dict:
     """Decode JWT token and return current user."""
     from db.database import AsyncSessionLocal
@@ -81,11 +80,8 @@ async def get_current_user(
         raise credentials_exception
     
     # Get user from database
-    if db is None:
-        async with AsyncSessionLocal() as session:
-            user = await crud.get_user(session, user_id=token_data.user_id)
-    else:
-        user = await crud.get_user(db, user_id=token_data.user_id)
+    async with AsyncSessionLocal() as session:
+        user = await crud.get_user(session, user_id=token_data.user_id)
         
     if user is None:
         raise credentials_exception
