@@ -1,0 +1,34 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+AI Interviewer Platform: Development Rules & Principles
+These are the guiding rules for building the application. Adherence is mandatory to ensure a high-quality, maintainable, and robust system.
+
+1. Core Principles
+Modularity and Single Responsibility: Each agent and module must have one, clearly defined purpose. The Interviewer only interviews, the Writer only writes, the Editor only edits. This separation of concerns is paramount.   
+Type Safety is Non-Negotiable: All data exchanged between components (agents, API layers, database) must be validated through Pydantic models. Do not pass raw dictionaries. This prevents data corruption and makes the system predictable and easier to debug.
+Asynchronous by Default: All operations involving I/O (API calls to LLMs or voice services, database queries, file access) must be implemented using async/await. This is critical for the performance and responsiveness of the FastAPI backend and voice interface.   
+State is Centralized and Explicit: The entire multi-step process is stateful. The state must be explicitly managed in a single, well-defined Pydantic object that is passed through the workflow. This ensures auditability and resilience.   
+2. Agent & Workflow Rules
+Structured Outputs: Agents that produce complex data (Writer, Editor) must have their output_type defined with a Pydantic model in the pydantic_ai.Agent constructor. This leverages Pydantic AI's self-correction and validation capabilities.
+The Reflection Loop is Key: The Editor agent's feedback must be structured to drive the workflow. The EditorFeedback model must contain a boolean flag (is_approved) that the orchestration graph uses to decide whether to loop back to the Writer or terminate the process.   
+Clear Agent Instructions: Each agent's system prompt must be explicit and clearly define its role, goal, constraints, and the expected format of its output. This is crucial for consistent performance.   
+3. Technology-Specific Rules
+Pydantic AI:
+Use the pydantic_ai.Agent class for all agents.
+Use the @agent.tool decorator to define any functions the agent needs to call.
+Use pydantic-graph or the agent's built-in iteration methods (.iter()) to orchestrate the workflow.
+FastAPI:
+All API endpoints must be defined with async def.
+Use Pydantic models for all request and response bodies to leverage automatic validation and documentation.   
+For the main agent workflow, use BackgroundTasks injected as a dependency. Do not run long-blocking tasks directly in an endpoint function.
+ElevenLabs:
+Use the official elevenlabs Python SDK.
+API keys must be loaded from environment variables, never hard-coded.
+For the interview, ensure the STT request enables diarize=True to distinguish between the interviewer and the interviewee.
+Database (SQLite):
+Use SQLAlchemy Core or ORM for all database interactions to ensure safety and maintainability. Do not write raw SQL strings.
+
+Create an inital repo for this and the Github MPC to create backups regurally after each task.
