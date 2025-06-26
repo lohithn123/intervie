@@ -748,7 +748,13 @@
             );
             // Redirect to interview page or handle WebSocket for voice
             if (mode === "voice") {
-              window.location.href = `/static/interview_voice.html?job_id=${data.job_id}`;
+              const topic = encodeURIComponent(
+                document.getElementById("topic").value
+              );
+              const audience = encodeURIComponent(
+                document.getElementById("audience").value
+              );
+              window.location.href = `/static/interview_voice_transcript.html?job_id=${data.job_id}&topic=${topic}&audience=${audience}`;
             } else {
               // Poll for completion
               setTimeout(() => loadInterviewHistory(), 5000);

@@ -215,4 +215,27 @@ class AnalyticsDashboardData(BaseModel):
     
     # User engagement
     user_activity: List[dict]
-    retention_metrics: dict 
+    retention_metrics: dict
+
+
+# Transcript Schemas for Real-time Display
+class TranscriptMessage(BaseModel):
+    speaker: str
+    content: str
+    timestamp: str
+
+class EditedTranscriptCreate(BaseModel):
+    interview_id: int
+    messages: List[TranscriptMessage]
+    edit_notes: Optional[str] = None
+
+class EditedTranscriptResponse(BaseModel):
+    id: int
+    interview_id: int
+    messages: List[TranscriptMessage]
+    edit_notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True 

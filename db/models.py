@@ -38,6 +38,7 @@ class Interview(Base):
     user = relationship("User", back_populates="interviews")
     template = relationship("InterviewTemplate", back_populates="interviews")
     article = relationship("Article", back_populates="interview", uselist=False, cascade="all, delete-orphan")
+    edited_transcripts = relationship("EditedTranscript")
 
 class Article(Base):
     __tablename__ = "articles"
@@ -148,3 +149,20 @@ class SystemMetrics(Base):
     total_api_cost = Column(Float, default=0.0)
     popular_topics = Column(Text)  # JSON array of topics
     popular_templates = Column(Text)  # JSON array of template usage
+
+
+class EditedTranscript(Base):
+    """Store user-edited transcripts separately from original interviews"""
+    __tablename__ = "edited_transcripts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    interview_id = Column(Integer, ForeignKey("interviews.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    messages = Column(Text, nullable=False)  # JSON string of transcript messages
+    edit_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    interview = relationship("Interview")
+    user = relationship("User")

@@ -2,7 +2,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func, and_, desc
-from .models import Interview, Article, User, InterviewTemplate, InterviewSession, APIUsageMetrics, UserEngagementMetrics, SystemMetrics
+from .models import Interview, Article, User, InterviewTemplate, InterviewSession, APIUsageMetrics, UserEngagementMetrics, SystemMetrics, EditedTranscript
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import json
@@ -474,3 +474,77 @@ async def get_user_analytics(session: AsyncSession, user_id: int) -> Dict[str, A
             for eng in engagement_history
         ]
     }
+
+
+# Edited Transcripts CRUD
+async def save_edited_transcript(
+    session: AsyncSession,
+    interview_id: int,
+    user_id: int,
+    messages: list,
+    edit_notes: str = None
+) -> EditedTranscript:
+    """Save or update an edited transcript"""
+    import json
+    
+    # Check if transcript already exists
+    stmt = select(EditedTranscript).where(
+        and_(
+            EditedTranscript.interview_id == interview_id,
+            EditedTranscript.user_id == user_id
+        )
+    )
+    result = await session.execute(stmt)
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        # Update existing transcript
+        existing.messages = json.dumps(messages)
+        existing.edit_notes = edit_notes
+        existing.updated_at = func.now()
+        await session.commit()
+        await session.refresh(existing)
+        return existing
+    else:
+        # Create new transcript
+        transcript = EditedTranscript(
+            interview_id=interview_id,
+            user_id=user_id,
+            messages=json.dumps(messages),
+            edit_notes=edit_notes
+        )
+        session.add(transcript)
+        await session.commit()
+        await session.refresh(transcript)
+        return transcript
+
+
+async def get_edited_transcript(
+    session: AsyncSession,
+    interview_id: int,
+    user_id: int
+) -> Optional[EditedTranscript]:
+    """Get edited transcript for an interview by a specific user"""
+    stmt = select(EditedTranscript).where(
+        and_(
+            EditedTranscript.interview_id == interview_id,
+            EditedTranscript.user_id == user_id
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_all_edited_transcripts(
+    session: AsyncSession,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100
+) -> List[EditedTranscript]:
+    """Get all edited transcripts for a user"""
+    stmt = select(EditedTranscript).where(
+        EditedTranscript.user_id == user_id
+    ).offset(skip).limit(limit).order_by(EditedTranscript.updated_at.desc())
+    
+    result = await session.execute(stmt)
+    return result.scalars().all()

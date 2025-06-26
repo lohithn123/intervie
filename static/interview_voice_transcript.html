@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎤 Live Interview with Transcript - AI Interviewer Platform</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        flex: 1;
+      }
+
+      .interview-panel {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .transcript-panel {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        max-height: 80vh;
+      }
+
+      .controls {
+        text-align: center;
+        margin: 20px 0;
+      }
+
+      .btn {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 25px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 0 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-danger {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+      }
+
+      .btn-small {
+        padding: 8px 16px;
+        font-size: 14px;
+        border-radius: 20px;
+      }
+
+      .status {
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .status.info {
+        background: #e7f3ff;
+        color: #0066cc;
+        border: 1px solid #b3d9ff;
+      }
+
+      .status.success {
+        background: #e8f5e8;
+        color: #2d7d32;
+        border: 1px solid #a5d6a7;
+      }
+
+      .status.error {
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ffcdd2;
+      }
+
+      .status.warning {
+        background: #fff8e1;
+        color: #f57c00;
+        border: 1px solid #ffecb3;
+      }
+
+      .audio-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 20px 0;
+        height: 60px;
+      }
+
+      .wave {
+        width: 6px;
+        height: 20px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        margin: 0 3px;
+        border-radius: 3px;
+        animation: wave 1.2s infinite ease-in-out;
+      }
+
+      .wave:nth-child(2) {
+        animation-delay: -1.1s;
+      }
+      .wave:nth-child(3) {
+        animation-delay: -1s;
+      }
+
+      @keyframes wave {
+        0%,
+        40%,
+        100% {
+          transform: scaleY(0.4);
+        }
+        20% {
+          transform: scaleY(1);
+        }
+      }
+
+      .transcript-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #eee;
+      }
+
+      .transcript-controls {
+        display: flex;
+        gap: 10px;
+      }
+
+      .transcript-display {
+        flex: 1;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        background: #fafafa;
+        overflow-y: auto;
+        max-height: 500px;
+        min-height: 300px;
+      }
+
+      .transcript-message {
+        margin-bottom: 15px;
+        padding: 12px;
+        border-radius: 8px;
+        line-height: 1.5;
+        word-wrap: break-word;
+      }
+
+      .transcript-message.interviewer {
+        background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        border-left: 4px solid #2196f3;
+      }
+
+      .transcript-message.interviewee {
+        background: linear-gradient(135deg, #f1f8e9, #dcedc8);
+        border-left: 4px solid #4caf50;
+      }
+
+      .message-header {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .message-timestamp {
+        font-size: 12px;
+        color: #666;
+        font-weight: normal;
+      }
+
+      .message-content {
+        font-size: 16px;
+        color: #333;
+      }
+
+      .transcript-placeholder {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        padding: 40px;
+      }
+
+      .transcript-search {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .transcript-search input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .phase-indicator {
+        text-align: center;
+        padding: 10px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 8px;
+        margin: 10px 0;
+        font-weight: bold;
+      }
+
+      .interview-stats {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        text-align: center;
+      }
+
+      .stat-item {
+        padding: 10px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #eee;
+      }
+
+      .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .highlight {
+        background-color: yellow;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      @media (max-width: 768px) {
+        .main-content {
+          grid-template-columns: 1fr;
+        }
+
+        .container {
+          padding: 10px;
+        }
+
+        .btn {
+          padding: 12px 20px;
+          font-size: 14px;
+          margin: 5px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎤 Live Interview with Real-Time Transcript</h1>
+        <div id="interviewInfo"></div>
+      </div>
+
+      <div class="main-content">
+        <!-- Interview Control Panel -->
+        <div class="interview-panel">
+          <h2>Interview Controls</h2>
+
+          <div class="controls">
+            <button id="startBtn" class="btn">🎤 Start Interview</button>
+            <button id="pauseBtn" class="btn" style="display: none" disabled>
+              ⏸️ Pause
+            </button>
+            <button
+              id="stopBtn"
+              class="btn btn-danger"
+              style="display: none"
+              disabled
+            >
+              ⏹️ Stop Interview
+            </button>
+          </div>
+
+          <div id="status" class="status info" style="display: none"></div>
+
+          <div
+            id="audioIndicator"
+            class="audio-indicator"
+            style="display: none"
+          >
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+          </div>
+
+          <div
+            id="phaseIndicator"
+            class="phase-indicator"
+            style="display: none"
+          >
+            Introduction Phase
+          </div>
+
+          <div
+            id="interviewStats"
+            class="interview-stats"
+            style="display: none"
+          >
+            <div class="stat-item">
+              <div class="stat-value" id="questionCount">0</div>
+              <div class="stat-label">Questions</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="messageCount">0</div>
+              <div class="stat-label">Messages</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="duration">00:00</div>
+              <div class="stat-label">Duration</div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button id="backBtn" class="btn" onclick="goBack()">
+              ← Back to Main
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-Time Transcript Panel -->
+        <div class="transcript-panel">
+          <div class="transcript-header">
+            <h3>📝 Live Transcript</h3>
+            <div class="transcript-controls">
+              <button id="clearTranscriptBtn" class="btn btn-small">
+                🗑️ Clear
+              </button>
+              <button id="exportTranscriptBtn" class="btn btn-small">
+                📄 Export
+              </button>
+              <button id="editModeBtn" class="btn btn-small">
+                ✏️ Edit Mode
+              </button>
+              <button id="searchToggleBtn" class="btn btn-small">
+                🔍 Search
+              </button>
+            </div>
+          </div>
+
+          <div class="transcript-display" id="transcriptDisplay">
+            <div class="transcript-placeholder">
+              Real-time transcript will appear here when the interview starts...
+              <br /><br />
+              🎤 The interviewer's questions will appear in blue<br />
+              🗣️ Your responses will appear in green<br />
+              📝 You can edit, search, and export the transcript
+            </div>
+          </div>
+
+          <div class="transcript-search hidden" id="transcriptSearch">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search transcript..."
+            />
+            <button id="searchBtn" class="btn btn-small">🔍 Find</button>
+            <button id="clearSearchBtn" class="btn btn-small">✖️ Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Global variables
+      let websocket = null;
+      let jobId = null;
+      let isRecording = false;
+      let transcriptMessages = [];
+      let currentPhase = 'introduction';
+      let questionCount = 0;
+      let startTime = null;
+      let durationTimer = null;
+      let editMode = false;
+
+      // Initialize the interface
+      window.addEventListener('load', () => {
+          initializeInterview();
+          setupEventListeners();
+      });
+
+      function initializeInterview() {
+          const urlParams = new URLSearchParams(window.location.search);
+          jobId = urlParams.get('job_id');
+          const topic = urlParams.get('topic') || 'Unknown Topic';
+          const audience = urlParams.get('audience') || 'General Public';
+
+          if (!jobId) {
+              updateStatus('No interview ID provided. Please start an interview from the main page.', 'error');
+              return;
+          }
+
+          document.getElementById('interviewInfo').innerHTML = \`
+              <strong>Topic:</strong> \${topic} | <strong>Audience:</strong> \${audience} | <strong>Job ID:</strong> \${jobId}
+          \`;
+      }
+
+      function setupEventListeners() {
+          document.getElementById('startBtn').addEventListener('click', startInterview);
+          document.getElementById('pauseBtn').addEventListener('click', pauseInterview);
+          document.getElementById('stopBtn').addEventListener('click', stopInterview);
+          document.getElementById('clearTranscriptBtn').addEventListener('click', clearTranscript);
+          document.getElementById('exportTranscriptBtn').addEventListener('click', exportTranscript);
+          document.getElementById('editModeBtn').addEventListener('click', toggleEditMode);
+          document.getElementById('searchToggleBtn').addEventListener('click', toggleSearch);
+          document.getElementById('searchBtn').addEventListener('click', searchTranscript);
+          document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
+      }
+
+      async function startInterview() {
+          if (!jobId) {
+              updateStatus('No interview ID available', 'error');
+              return;
+          }
+
+          try {
+              // Check microphone permissions
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+
+              // Connect WebSocket
+              const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              const wsUrl = \`\${protocol}//\${window.location.host}/interviews/stream/\${jobId}\`;
+
+              websocket = new WebSocket(wsUrl);
+
+              websocket.onopen = onWebSocketOpen;
+              websocket.onmessage = onWebSocketMessage;
+              websocket.onerror = onWebSocketError;
+              websocket.onclose = onWebSocketClose;
+
+              // Update UI
+              document.getElementById('startBtn').style.display = 'none';
+              document.getElementById('pauseBtn').style.display = 'inline-block';
+              document.getElementById('stopBtn').style.display = 'inline-block';
+              document.getElementById('audioIndicator').style.display = 'flex';
+              document.getElementById('phaseIndicator').style.display = 'block';
+              document.getElementById('interviewStats').style.display = 'block';
+
+              updateStatus('Connecting to interview...', 'info');
+              startDurationTimer();
+
+          } catch (error) {
+              updateStatus(\`Failed to access microphone: \${error.message}\`, 'error');
+          }
+      }
+
+      function onWebSocketOpen() {
+          updateStatus('Connected! Interview starting...', 'success');
+          isRecording = true;
+          startAudioCapture();
+      }
+
+      function onWebSocketMessage(event) {
+          try {
+              // Handle both text and binary data
+              if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+                  // Audio data - play it
+                  playAudio(event.data);
+              } else {
+                  // Text data - parse as JSON for transcript events
+                  const data = JSON.parse(event.data);
+                  handleTranscriptEvent(data);
+              }
+          } catch (error) {
+              console.error('Error handling WebSocket message:', error);
+          }
+      }
+
+      function handleTranscriptEvent(event) {
+          switch (event.event_type) {
+              case 'interview_started':
+                  updateStatus('Interview started successfully!', 'success');
+                  clearTranscriptDisplay();
+                  break;
+
+              case 'new_message':
+                  addMessageToTranscript(event.data);
+                  break;
+
+              case 'phase_changed':
+                  updatePhase(event.data.new_phase, event.data.questions_asked);
+                  break;
+
+              case 'interview_completed':
+                  updateStatus('Interview completed!', 'success');
+                  stopInterview();
+                  break;
+
+              default:
+                  console.log('Unknown transcript event:', event);
+          }
+      }
+
+      function addMessageToTranscript(messageData) {
+          const message = {
+              speaker: messageData.speaker,
+              content: messageData.content,
+              timestamp: new Date(messageData.timestamp)
+          };
+
+          transcriptMessages.push(message);
+          displayMessage(message);
+          updateStats();
+
+          // Auto-scroll to bottom
+          const transcriptDisplay = document.getElementById('transcriptDisplay');
+          transcriptDisplay.scrollTop = transcriptDisplay.scrollHeight;
+      }
+
+      function displayMessage(message) {
+          const transcriptDisplay = document.getElementById('transcriptDisplay');
+
+          // Remove placeholder if this is the first message
+          const placeholder = transcriptDisplay.querySelector('.transcript-placeholder');
+          if (placeholder) {
+              placeholder.remove();
+          }
+
+          const messageDiv = document.createElement('div');
+          messageDiv.className = \`transcript-message \${message.speaker.toLowerCase()}\`;
+          messageDiv.innerHTML = \`
+              <div class="message-header">
+                  <span>\${message.speaker === 'Interviewer' ? '🎤' : '🗣️'} \${message.speaker}</span>
+                  <span class="message-timestamp">\${message.timestamp.toLocaleTimeString()}</span>
+              </div>
+              <div class="message-content" \${editMode ? 'contenteditable="true"' : ''}>\${message.content}</div>
+          \`;
+
+          transcriptDisplay.appendChild(messageDiv);
+      }
+
+      function updatePhase(newPhase, questionsAsked) {
+          currentPhase = newPhase;
+          questionCount = questionsAsked;
+
+          const phaseDisplay = {
+              'introduction': 'Introduction Phase',
+              'main': 'Main Interview',
+              'closing': 'Closing Phase'
+          };
+
+          document.getElementById('phaseIndicator').textContent = phaseDisplay[newPhase] || newPhase;
+          updateStats();
+      }
+
+      function updateStats() {
+          document.getElementById('questionCount').textContent = questionCount;
+          document.getElementById('messageCount').textContent = transcriptMessages.length;
+      }
+
+      function startDurationTimer() {
+          startTime = new Date();
+          durationTimer = setInterval(() => {
+              const elapsed = new Date() - startTime;
+              const minutes = Math.floor(elapsed / 60000);
+              const seconds = Math.floor((elapsed % 60000) / 1000);
+              document.getElementById('duration').textContent =
+                  \`\${minutes.toString().padStart(2, '0')}:\${seconds.toString().padStart(2, '0')}\`;
+          }, 1000);
+      }
+
+      async function startAudioCapture() {
+          try {
+              const stream = await navigator.mediaDevices.getUserMedia({
+                  audio: {
+                      echoCancellation: true,
+                      noiseSuppression: true,
+                      autoGainControl: true
+                  }
+              });
+
+              const mediaRecorder = new MediaRecorder(stream);
+              let audioChunks = [];
+
+              mediaRecorder.ondataavailable = (event) => {
+                  if (event.data.size > 0) {
+                      audioChunks.push(event.data);
+                  }
+              };
+
+              mediaRecorder.onstop = () => {
+                  if (audioChunks.length > 0 && websocket && websocket.readyState === WebSocket.OPEN) {
+                      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                      audioBlob.arrayBuffer().then(buffer => {
+                          websocket.send(buffer);
+                      });
+                  }
+                  audioChunks = [];
+              };
+
+              // Record in chunks
+              const recordChunk = () => {
+                  if (isRecording && mediaRecorder.state === 'inactive') {
+                      mediaRecorder.start();
+                      setTimeout(() => {
+                          if (mediaRecorder.state === 'recording') {
+                              mediaRecorder.stop();
+                          }
+                          if (isRecording) {
+                              setTimeout(recordChunk, 100);
+                          }
+                      }, 1000);
+                  }
+              };
+
+              recordChunk();
+
+          } catch (error) {
+              updateStatus(\`Audio capture failed: \${error.message}\`, 'error');
+          }
+      }
+
+      function playAudio(audioData) {
+          const audioBlob = new Blob([audioData], { type: 'audio/wav' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+
+          audio.play().catch(error => {
+              console.error('Audio playback failed:', error);
+          });
+
+          audio.onended = () => {
+              URL.revokeObjectURL(audioUrl);
+          };
+      }
+
+      function pauseInterview() {
+          isRecording = false;
+          updateStatus('Interview paused', 'warning');
+          // Note: Actual pause functionality would need server-side support
+      }
+
+      function stopInterview() {
+          isRecording = false;
+
+          if (websocket) {
+              websocket.close();
+          }
+
+          if (durationTimer) {
+              clearInterval(durationTimer);
+          }
+
+          // Reset UI
+          document.getElementById('startBtn').style.display = 'inline-block';
+          document.getElementById('pauseBtn').style.display = 'none';
+          document.getElementById('stopBtn').style.display = 'none';
+          document.getElementById('audioIndicator').style.display = 'none';
+
+          updateStatus('Interview stopped', 'info');
+      }
+
+      function onWebSocketError(error) {
+          updateStatus('Connection error: ' + error.message, 'error');
+      }
+
+      function onWebSocketClose() {
+          isRecording = false;
+          updateStatus('Interview connection closed', 'warning');
+      }
+
+      function clearTranscript() {
+          if (confirm('Are you sure you want to clear the transcript?')) {
+              transcriptMessages = [];
+              clearTranscriptDisplay();
+              updateStats();
+          }
+      }
+
+      function clearTranscriptDisplay() {
+          const transcriptDisplay = document.getElementById('transcriptDisplay');
+          transcriptDisplay.innerHTML = \`
+              <div class="transcript-placeholder">
+                  Real-time transcript will appear here when the interview starts...
+              </div>
+          \`;
+      }
+
+      function exportTranscript() {
+          if (transcriptMessages.length === 0) {
+              updateStatus('No transcript to export', 'warning');
+              return;
+          }
+
+          let transcriptText = \`Interview Transcript\\n\`;
+          transcriptText += \`Generated: \${new Date().toLocaleString()}\\n\`;
+          transcriptText += \`Duration: \${document.getElementById('duration').textContent}\\n\`;
+          transcriptText += \`Total Messages: \${transcriptMessages.length}\\n\\n\`;
+
+          transcriptMessages.forEach(message => {
+              transcriptText += \`[\${message.timestamp.toLocaleTimeString()}] \${message.speaker}: \${message.content}\\n\\n\`;
+          });
+
+          const blob = new Blob([transcriptText], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = \`interview_transcript_\${jobId}_\${new Date().toISOString().split('T')[0]}.txt\`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          updateStatus('Transcript exported successfully!', 'success');
+      }
+
+      function toggleEditMode() {
+          editMode = !editMode;
+          const editBtn = document.getElementById('editModeBtn');
+
+          if (editMode) {
+              editBtn.textContent = '💾 Save Mode';
+              editBtn.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a52)';
+              updateStatus('Edit mode enabled - you can now edit message content', 'info');
+          } else {
+              // Save mode - save the edited transcript
+              editBtn.textContent = '✏️ Edit Mode';
+              editBtn.style.background = '';
+              saveEditedTranscript();
+          }
+
+          // Update all message content editability
+          const messageContents = document.querySelectorAll('.message-content');
+          messageContents.forEach(content => {
+              content.contentEditable = editMode;
+              content.style.border = editMode ? '1px dashed #ccc' : 'none';
+          });
+      }
+
+      async function saveEditedTranscript() {
+          if (transcriptMessages.length === 0) {
+              updateStatus('No transcript to save', 'warning');
+              return;
+          }
+
+          try {
+              // Get current edited content from DOM
+              const messageElements = document.querySelectorAll('.transcript-message');
+              const editedMessages = [];
+
+              messageElements.forEach((element, index) => {
+                  const speaker = element.classList.contains('interviewer') ? 'Interviewer' : 'Interviewee';
+                  const content = element.querySelector('.message-content').textContent;
+                  const timestamp = transcriptMessages[index]?.timestamp || new Date().toISOString();
+
+                  editedMessages.push({
+                      speaker: speaker,
+                      content: content,
+                      timestamp: timestamp
+                  });
+              });
+
+              const transcriptData = {
+                  interview_id: parseInt(jobId),
+                  messages: editedMessages,
+                  edit_notes: `Edited on ${new Date().toLocaleString()}`
+              };
+
+              const authToken = localStorage.getItem('authToken');
+              if (!authToken) {
+                  updateStatus('Authentication required to save transcript', 'error');
+                  return;
+              }
+
+              const response = await fetch('/api/transcripts/save', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${authToken}`
+                  },
+                  body: JSON.stringify(transcriptData)
+              });
+
+              if (response.ok) {
+                  updateStatus('Transcript saved successfully!', 'success');
+              } else {
+                  const error = await response.json();
+                  updateStatus(`Failed to save transcript: ${error.detail}`, 'error');
+              }
+
+          } catch (error) {
+              updateStatus(`Error saving transcript: ${error.message}`, 'error');
+          }
+      }
+
+      function toggleSearch() {
+          const searchDiv = document.getElementById('transcriptSearch');
+          searchDiv.classList.toggle('hidden');
+
+          if (!searchDiv.classList.contains('hidden')) {
+              document.getElementById('searchInput').focus();
+          }
+      }
+
+      function searchTranscript() {
+          const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+          if (!searchTerm) return;
+
+          const messageContents = document.querySelectorAll('.message-content');
+          let found = false;
+
+          messageContents.forEach(content => {
+              const text = content.textContent.toLowerCase();
+              if (text.includes(searchTerm)) {
+                  content.innerHTML = content.textContent.replace(
+                      new RegExp(searchTerm, 'gi'),
+                      \`<span class="highlight">\$&</span>\`
+                  );
+                  found = true;
+              }
+          });
+
+          updateStatus(found ? \`Found matches for "\${searchTerm}"\` : \`No matches found for "\${searchTerm}"\`,
+                      found ? 'success' : 'warning');
+      }
+
+      function clearSearch() {
+          document.getElementById('searchInput').value = '';
+
+          const messageContents = document.querySelectorAll('.message-content');
+          messageContents.forEach(content => {
+              content.innerHTML = content.textContent; // Remove highlights
+          });
+
+          updateStatus('Search cleared', 'info');
+      }
+
+      function updateStatus(message, type = 'info') {
+          const status = document.getElementById('status');
+          status.textContent = message;
+          status.className = \`status \${type}\`;
+          status.style.display = 'block';
+
+          if (type === 'success') {
+              setTimeout(() => {
+                  status.style.display = 'none';
+              }, 3000);
+          }
+      }
+
+      function goBack() {
+          if (isRecording) {
+              if (confirm('Interview is in progress. Are you sure you want to leave?')) {
+                  stopInterview();
+                  window.location.href = '/static/interview_client_auth.html';
+              }
+          } else {
+              window.location.href = '/static/interview_client_auth.html';
+          }
+      }
+    </script>
+  </body>
+</html>

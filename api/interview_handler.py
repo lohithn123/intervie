@@ -29,8 +29,10 @@ class ConversationState:
     
     def add_message(self, speaker: str, content: str):
         """Add a message to the conversation history."""
-        self.messages.append(InterviewMessage(speaker=speaker, content=content))
+        message = InterviewMessage(speaker=speaker, content=content)
+        self.messages.append(message)
         self.last_activity = datetime.now()
+        return message
         
     def get_transcript(self) -> InterviewTranscript:
         """Get the current interview transcript."""
@@ -55,6 +57,43 @@ class InterviewerPromptContext(BaseModel):
     conversation_context: str
     phase: str
     questions_asked: int
+
+
+async def send_transcript_event(websocket, event_type: str, data: Dict):
+    """Send a transcript-related event to the client."""
+    try:
+        event = {
+            "type": "transcript_event",
+            "event_type": event_type,
+            "timestamp": datetime.now().isoformat(),
+            "data": data
+        }
+        await websocket.send_text(json.dumps(event))
+    except Exception as e:
+        print(f"Failed to send transcript event: {e}")
+
+
+async def send_message_event(websocket, message: InterviewMessage):
+    """Send a new message event to the client."""
+    await send_transcript_event(websocket, "new_message", {
+        "speaker": message.speaker,
+        "content": message.content,
+        "timestamp": datetime.now().isoformat()
+    })
+
+
+async def send_transcript_update(websocket, transcript: InterviewTranscript):
+    """Send complete transcript update to the client."""
+    await send_transcript_event(websocket, "transcript_update", {
+        "messages": [
+            {
+                "speaker": msg.speaker,
+                "content": msg.content,
+                "timestamp": datetime.now().isoformat()
+            }
+            for msg in transcript.messages
+        ]
+    })
 
 
 async def handle_interview_audio_stream(
@@ -98,9 +137,17 @@ async def handle_interview_audio_stream(
         voice_preset = voice_mapping.get(template["voice_persona"], "interviewer")
     
     try:
+        # Send interview start event
+        await send_transcript_event(websocket, "interview_started", {
+            "topic": topic,
+            "interview_id": interview_id,
+            "template": template.get("name") if template else None
+        })
+        
         # Send initial greeting
         greeting = await generate_interviewer_greeting(topic, template)
-        state.add_message("Interviewer", greeting)
+        message = state.add_message("Interviewer", greeting)
+        await send_message_event(websocket, message)
         
         # Synthesize and send greeting audio
         async for audio_chunk in synthesize_speech(
@@ -124,13 +171,16 @@ async def handle_interview_audio_stream(
             if not interviewee_text:
                 continue
                 
-            state.add_message("Interviewee", interviewee_text)
+            # Send transcription event
+            message = state.add_message("Interviewee", interviewee_text)
+            await send_message_event(websocket, message)
             
             # Generate interviewer's next question
             next_question = await generate_next_question(state)
             
             if next_question:
-                state.add_message("Interviewer", next_question)
+                message = state.add_message("Interviewer", next_question)
+                await send_message_event(websocket, message)
                 state.questions_asked += 1
                 
                 # Update interview phase
@@ -138,6 +188,12 @@ async def handle_interview_audio_stream(
                     state.interview_phase = "closing"
                 elif state.questions_asked >= 2:
                     state.interview_phase = "main"
+                
+                # Send phase update event
+                await send_transcript_event(websocket, "phase_changed", {
+                    "new_phase": state.interview_phase,
+                    "questions_asked": state.questions_asked
+                })
                 
                 # Synthesize and send interviewer's response
                 async for audio_chunk in synthesize_speech(
@@ -148,7 +204,8 @@ async def handle_interview_audio_stream(
         
         # Send closing remarks
         closing = await generate_closing_remarks(state)
-        state.add_message("Interviewer", closing)
+        message = state.add_message("Interviewer", closing)
+        await send_message_event(websocket, message)
         
         async for audio_chunk in synthesize_speech(
             closing,
@@ -156,7 +213,15 @@ async def handle_interview_audio_stream(
         ):
             await websocket.send_bytes(audio_chunk)
         
-        return state.get_transcript()
+        # Send interview completion event
+        final_transcript = state.get_transcript()
+        await send_transcript_event(websocket, "interview_completed", {
+            "total_messages": len(final_transcript.messages),
+            "total_questions": state.questions_asked,
+            "duration_minutes": (datetime.now() - state.last_activity).total_seconds() / 60
+        })
+        
+        return final_transcript
         
     except Exception as e:
         print(f"Interview error: {str(e)}")
