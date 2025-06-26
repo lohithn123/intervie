@@ -102,3 +102,76 @@ Objective: Create a user interface and prepare the application for production.
 
 [x] Configure environment variables for production.
 [x] Write scripts for deploying the container to a cloud service (e.g., AWS, GCP, Azure).
+
+Phase 5: Optional Enhancements (Future Development)
+
+Objective: Add advanced features to enhance user experience, security, and functionality.
+
+[ ] 5.1: Authentication and User Management
+
+[ ] Install authentication dependencies: python-jose[cryptography], passlib[bcrypt], python-multipart.
+[ ] Create a user model in SQLAlchemy with email, hashed password, and role fields.
+[ ] Implement JWT token-based authentication with FastAPI security utilities.
+[ ] Create endpoints for user registration, login, and token refresh.
+[ ] Add authentication middleware to protect interview endpoints.
+[ ] Implement user-specific interview history and article ownership.
+[ ] Add role-based access control (admin, user, guest).
+
+[ ] 5.2: Interview Templates for Different Domains
+
+[ ] Create a templates model to store predefined interview structures.
+[ ] Define template schemas with:
+[ ] Domain/category (journalism, research, marketing, etc.)
+[ ] Initial questions set
+[ ] Follow-up question patterns
+[ ] Target article style and tone
+[ ] Create an admin interface to manage templates.
+[ ] Modify the InterviewerAgent to use templates as context.
+[ ] Add template selection to the interview start flow.
+[ ] Implement template-specific voice personas.
+
+[ ] 5.3: Analytics Dashboard
+
+[ ] Install dashboard dependencies: plotly, dash or streamlit.
+[ ] Create analytics models to track:
+[ ] Interview duration and completion rates
+[ ] Most common topics
+[ ] Article generation success rates
+[ ] User engagement metrics
+[ ] API usage statistics
+[ ] Build dashboard views:
+[ ] User activity overview
+[ ] Interview performance metrics
+[ ] Article quality scores (based on editor iterations)
+[ ] Cost analysis (API usage)
+[ ] Implement real-time updates using WebSockets.
+[ ] Add export functionality for reports.
+
+[ ] 5.4: Export Options (PDF, Markdown, DOCX)
+
+[ ] Install export libraries: reportlab (PDF), python-docx (DOCX), markdown2.
+[ ] Create export service module with conversion functions.
+[ ] Add export endpoints for each format:
+[ ] GET /interviews/{job_id}/export/pdf
+[ ] GET /interviews/{job_id}/export/markdown
+[ ] GET /interviews/{job_id}/export/docx
+[ ] Implement formatting templates for each export type.
+[ ] Add metadata to exports (interview date, participants, etc.).
+[ ] Create batch export functionality for multiple articles.
+[ ] Add email delivery option for exported files.
+
+[ ] 5.5: Real-time Transcript Display
+
+[ ] Modify WebSocket handler to emit transcript events.
+[ ] Create transcript state management in interview handler.
+[ ] Update frontend to display live transcription:
+[ ] Add transcript container to UI
+[ ] Implement WebSocket message handling for transcript updates
+[ ] Show speaker labels and timestamps
+[ ] Add auto-scroll functionality
+[ ] Implement transcript editing capabilities:
+[ ] Allow users to correct transcription errors
+[ ] Add annotation features
+[ ] Save edited transcripts separately
+[ ] Add transcript search and highlight functionality.
+[ ] Create transcript export as separate document.
