@@ -9,9 +9,15 @@ from typing import Optional
 import asyncio
 from api.agents import writer_agent, editor_agent, mock_interview, WriterContext, EditorContext
 from api.interview_handler import handle_interview_audio_stream
+from api.auth_routes import router as auth_router
+from auth.auth_utils import get_current_active_user
 from schemas import InterviewTranscript, ArticleDraft
+from db.models import User
 
-app = FastAPI()
+app = FastAPI(title="AI Interviewer Platform", version="2.0.0")
+
+# Include authentication routes
+app.include_router(auth_router)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -104,8 +110,14 @@ async def start_interview(
     req: InterviewStartRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # Require authentication
 ):
-    interview = await crud.create_interview(db, req.topic, req.target_audience)
+    interview = await crud.create_interview(
+        db, 
+        req.topic, 
+        req.target_audience,
+        user_id=current_user.id  # Associate with current user
+    )
     job_status[interview.id] = "pending"
     
     if req.mode == "text":
@@ -118,16 +130,61 @@ async def start_interview(
     return InterviewStartResponse(job_id=interview.id)
 
 @app.get("/interviews/{job_id}/status", response_model=InterviewStatusResponse)
-async def get_interview_status(job_id: int):
+async def get_interview_status(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # Verify user owns this interview
+    interview = await crud.get_interview(db, job_id)
+    if not interview or interview.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    
     status = job_status.get(job_id, "unknown")
     return InterviewStatusResponse(job_id=job_id, status=status)
 
 @app.get("/interviews/{job_id}/result", response_model=ArticleResponse)
-async def get_interview_result(job_id: int, db: AsyncSession = Depends(get_db)):
+async def get_interview_result(
+    job_id: int, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # Verify user owns this interview
+    interview = await crud.get_interview(db, job_id)
+    if not interview or interview.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    
     article = await crud.get_article_by_interview_id(db, job_id)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found or not ready.")
     return ArticleResponse(title=article.title, content=article.content, version=article.version)
+
+# New endpoint for user's interview history
+@app.get("/interviews/my/history")
+async def get_my_interviews(
+    limit: int = 20,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get current user's interview history."""
+    interviews = await crud.get_user_interviews(db, current_user.id, limit, offset)
+    return {
+        "interviews": [
+            {
+                "id": interview.id,
+                "topic": interview.topic,
+                "target_audience": interview.target_audience,
+                "status": interview.status,
+                "created_at": interview.created_at,
+                "has_article": bool(interview.article)
+            }
+            for interview in interviews
+        ],
+        "user_id": current_user.id,
+        "limit": limit,
+        "offset": offset
+    }
 
 @app.websocket("/interviews/stream/{job_id}")
 async def interview_audio_stream(websocket: WebSocket, job_id: int, db: AsyncSession = Depends(get_db)):
@@ -164,4 +221,4 @@ async def interview_audio_stream(websocket: WebSocket, job_id: int, db: AsyncSes
 
 @app.get("/")
 def root():
-    return FileResponse("static/interview_client.html") 
+    return FileResponse("static/interview_client_auth.html") 

@@ -1,9 +1,62 @@
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from .models import Interview, Article
+from sqlalchemy.orm import selectinload
+from .models import Interview, Article, User
+from typing import Optional
 
-async def create_interview(session: AsyncSession, topic: str, target_audience: str) -> Interview:
-    interview = Interview(topic=topic, target_audience=target_audience)
+# User CRUD operations
+async def create_user(session: AsyncSession, email: str, username: str, hashed_password: str, full_name: Optional[str] = None) -> User:
+    user = User(
+        email=email,
+        username=username,
+        hashed_password=hashed_password,
+        full_name=full_name
+    )
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+async def get_user(session: AsyncSession, user_id: int) -> Optional[User]:
+    result = await session.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+async def get_user_by_email(session: AsyncSession, email: str) -> Optional[User]:
+    result = await session.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+async def get_user_by_username(session: AsyncSession, username: str) -> Optional[User]:
+    result = await session.execute(select(User).where(User.username == username))
+    return result.scalar_one_or_none()
+
+async def update_user(session: AsyncSession, user_id: int, **kwargs) -> Optional[User]:
+    user = await get_user(session, user_id)
+    if user:
+        for key, value in kwargs.items():
+            if hasattr(user, key) and value is not None:
+                setattr(user, key, value)
+        await session.commit()
+        await session.refresh(user)
+    return user
+
+async def get_user_interviews(session: AsyncSession, user_id: int, limit: int = 20, offset: int = 0):
+    result = await session.execute(
+        select(Interview)
+        .where(Interview.user_id == user_id)
+        .options(selectinload(Interview.article))
+        .order_by(Interview.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+# Updated Interview CRUD operations
+async def create_interview(session: AsyncSession, topic: str, target_audience: str, user_id: Optional[int] = None) -> Interview:
+    interview = Interview(
+        topic=topic, 
+        target_audience=target_audience,
+        user_id=user_id
+    )
     session.add(interview)
     await session.commit()
     await session.refresh(interview)

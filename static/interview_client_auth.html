@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Interviewer - Voice Client</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+      }
+      .auth-forms {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+      .auth-form {
+        flex: 1;
+        padding: 20px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #4caf50;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-right: 10px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        background: #f0f0f0;
+        font-size: 14px;
+      }
+      #status.success {
+        background: #e8f5e9;
+        color: #388e3c;
+      }
+      #status.error {
+        background: #ffebee;
+        color: #c62828;
+      }
+      #userInfo {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+      }
+      .hidden {
+        display: none;
+      }
+      .interview-history {
+        margin-top: 20px;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+      }
+      .history-item {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .history-item:hover {
+        background: #f5f5f5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎤 AI Interviewer Platform</h1>
+
+      <!-- Authentication Section -->
+      <div id="authSection">
+        <div class="auth-forms">
+          <!-- Login Form -->
+          <div class="auth-form">
+            <h3>Login</h3>
+            <form id="loginForm">
+              <div class="form-group">
+                <label for="loginUsername">Username or Email:</label>
+                <input type="text" id="loginUsername" required />
+              </div>
+              <div class="form-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" required />
+              </div>
+              <button type="submit">Login</button>
+            </form>
+          </div>
+
+          <!-- Registration Form -->
+          <div class="auth-form">
+            <h3>Register</h3>
+            <form id="registerForm">
+              <div class="form-group">
+                <label for="regEmail">Email:</label>
+                <input type="email" id="regEmail" required />
+              </div>
+              <div class="form-group">
+                <label for="regUsername">Username:</label>
+                <input type="text" id="regUsername" required />
+              </div>
+              <div class="form-group">
+                <label for="regFullName">Full Name (optional):</label>
+                <input type="text" id="regFullName" />
+              </div>
+              <div class="form-group">
+                <label for="regPassword">Password:</label>
+                <input
+                  type="password"
+                  id="regPassword"
+                  required
+                  minlength="8"
+                />
+              </div>
+              <button type="submit">Register</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Info Section -->
+      <div id="userInfo">
+        <span id="userDisplay"></span>
+        <button onclick="logout()" style="float: right; background: #f44336">
+          Logout
+        </button>
+      </div>
+
+      <!-- Interview Section (hidden until logged in) -->
+      <div id="interviewSection" class="hidden">
+        <div id="setupForm">
+          <div class="form-group">
+            <label for="topic">Interview Topic:</label>
+            <input
+              type="text"
+              id="topic"
+              placeholder="e.g., AI Ethics, Climate Change, Remote Work"
+              value="AI Ethics"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="audience">Target Audience:</label>
+            <select id="audience">
+              <option value="General Public">General Public</option>
+              <option value="Developers" selected>Developers</option>
+              <option value="Business Leaders">Business Leaders</option>
+              <option value="Students">Students</option>
+              <option value="Researchers">Researchers</option>
+            </select>
+          </div>
+
+          <button id="startTextBtn" onclick="startInterview('text')">
+            📝 Start Text Interview (Demo)
+          </button>
+          <button id="startVoiceBtn" onclick="startInterview('voice')">
+            🎙️ Start Voice Interview
+          </button>
+        </div>
+
+        <!-- Interview History -->
+        <div class="interview-history" id="interviewHistory">
+          <h4>Recent Interviews</h4>
+          <div id="historyList"></div>
+        </div>
+      </div>
+
+      <div id="status"></div>
+    </div>
+
+    <script>
+      let authToken = localStorage.getItem("authToken");
+      let currentUser = null;
+
+      // Check if user is already logged in
+      if (authToken) {
+        checkAuthStatus();
+      }
+
+      function updateStatus(message, type = "info") {
+        const status = document.getElementById("status");
+        status.textContent = message;
+        status.className = type;
+        status.style.display = "block";
+
+        if (type === "success") {
+          setTimeout(() => {
+            status.style.display = "none";
+          }, 3000);
+        }
+      }
+
+      // Login form handler
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const username = document.getElementById("loginUsername").value;
+          const password = document.getElementById("loginPassword").value;
+
+          try {
+            const formData = new FormData();
+            formData.append("username", username);
+            formData.append("password", password);
+
+            const response = await fetch("/auth/login", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              authToken = data.access_token;
+              localStorage.setItem("authToken", authToken);
+              updateStatus("Login successful!", "success");
+              await checkAuthStatus();
+            } else {
+              const error = await response.json();
+              updateStatus(`Login failed: ${error.detail}`, "error");
+            }
+          } catch (error) {
+            updateStatus(`Error: ${error.message}`, "error");
+          }
+        });
+
+      // Registration form handler
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const userData = {
+            email: document.getElementById("regEmail").value,
+            username: document.getElementById("regUsername").value,
+            full_name: document.getElementById("regFullName").value || null,
+            password: document.getElementById("regPassword").value,
+          };
+
+          try {
+            const response = await fetch("/auth/register", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(userData),
+            });
+
+            if (response.ok) {
+              updateStatus("Registration successful! Please login.", "success");
+              document.getElementById("registerForm").reset();
+            } else {
+              const error = await response.json();
+              updateStatus(`Registration failed: ${error.detail}`, "error");
+            }
+          } catch (error) {
+            updateStatus(`Error: ${error.message}`, "error");
+          }
+        });
+
+      async function checkAuthStatus() {
+        try {
+          const response = await fetch("/auth/me", {
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+
+          if (response.ok) {
+            currentUser = await response.json();
+            showUserInterface();
+          } else {
+            authToken = null;
+            localStorage.removeItem("authToken");
+          }
+        } catch (error) {
+          console.error("Auth check failed:", error);
+        }
+      }
+
+      function showUserInterface() {
+        document.getElementById("authSection").style.display = "none";
+        document.getElementById("userInfo").style.display = "block";
+        document.getElementById("interviewSection").classList.remove("hidden");
+        document.getElementById("userDisplay").textContent = `Welcome, ${
+          currentUser.full_name || currentUser.username
+        }!`;
+
+        loadInterviewHistory();
+      }
+
+      async function loadInterviewHistory() {
+        try {
+          const response = await fetch("/interviews/my/history", {
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            displayHistory(data.interviews);
+          }
+        } catch (error) {
+          console.error("Failed to load history:", error);
+        }
+      }
+
+      function displayHistory(interviews) {
+        const historyList = document.getElementById("historyList");
+        historyList.innerHTML = "";
+
+        if (interviews.length === 0) {
+          historyList.innerHTML =
+            "<p>No interviews yet. Start your first one!</p>";
+          return;
+        }
+
+        interviews.forEach((interview) => {
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+                    <strong>${interview.topic}</strong> - ${
+            interview.target_audience
+          }<br>
+                    <small>${new Date(
+                      interview.created_at
+                    ).toLocaleDateString()}</small>
+                    ${interview.has_article ? " ✅" : " ⏳"}
+                `;
+          item.onclick = () => {
+            if (interview.has_article) {
+              window.location.href = `/interviews/${interview.id}/result`;
+            }
+          };
+          historyList.appendChild(item);
+        });
+      }
+
+      async function logout() {
+        try {
+          await fetch("/auth/logout", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+        } catch (error) {
+          console.error("Logout error:", error);
+        }
+
+        authToken = null;
+        currentUser = null;
+        localStorage.removeItem("authToken");
+
+        document.getElementById("authSection").style.display = "block";
+        document.getElementById("userInfo").style.display = "none";
+        document.getElementById("interviewSection").classList.add("hidden");
+        updateStatus("Logged out successfully", "success");
+      }
+
+      async function startInterview(mode) {
+        const topic = document.getElementById("topic").value;
+        const audience = document.getElementById("audience").value;
+
+        if (!topic) {
+          updateStatus("Please enter a topic", "error");
+          return;
+        }
+
+        try {
+          const response = await fetch("/interviews/start", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({ topic, target_audience: audience, mode }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            updateStatus(
+              `Interview started! Job ID: ${data.job_id}`,
+              "success"
+            );
+            // Redirect to interview page or handle WebSocket for voice
+            if (mode === "voice") {
+              window.location.href = `/static/interview_voice.html?job_id=${data.job_id}`;
+            } else {
+              // Poll for completion
+              setTimeout(() => loadInterviewHistory(), 5000);
+            }
+          } else {
+            const error = await response.json();
+            updateStatus(`Failed to start interview: ${error.detail}`, "error");
+          }
+        } catch (error) {
+          updateStatus(`Error: ${error.message}`, "error");
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -109,12 +109,12 @@ Objective: Add advanced features to enhance user experience, security, and funct
 
 [ ] 5.1: Authentication and User Management
 
-[ ] Install authentication dependencies: python-jose[cryptography], passlib[bcrypt], python-multipart.
-[ ] Create a user model in SQLAlchemy with email, hashed password, and role fields.
-[ ] Implement JWT token-based authentication with FastAPI security utilities.
-[ ] Create endpoints for user registration, login, and token refresh.
-[ ] Add authentication middleware to protect interview endpoints.
-[ ] Implement user-specific interview history and article ownership.
+[x] Install authentication dependencies: python-jose[cryptography], passlib[bcrypt], python-multipart.
+[x] Create a user model in SQLAlchemy with email, hashed password, and role fields.
+[x] Implement JWT token-based authentication with FastAPI security utilities.
+[x] Create endpoints for user registration, login, and token refresh.
+[x] Add authentication middleware to protect interview endpoints.
+[x] Implement user-specific interview history and article ownership.
 [ ] Add role-based access control (admin, user, guest).
 
 [ ] 5.2: Interview Templates for Different Domains

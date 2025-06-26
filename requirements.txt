@@ -27,4 +27,9 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 
 # Production utilities
-requests==2.31.0  # For Docker healthcheck 
+requests==2.31.0  # For Docker healthcheck
+
+# Phase 5: Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6  # Already included above 
