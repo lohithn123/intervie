@@ -5,42 +5,42 @@ Phase 1: Core Agent Logic (Text-Only)
 
 Objective: Create and validate the multi-agent workflow using Pydantic AI. The focus is on the logic, not the interface.
 
-[ ] 1.1: Project Setup
+[x] 1.1: Project Setup
 
-[ ] Initialize a Python project with a virtual environment.
-[ ] Install initial dependencies: pydantic-ai[examples], openai, python-dotenv.
-[ ] Set up .env file for API keys (OpenAI, ElevenLabs).
-[ ] 1.2: Define Core Data Schemas
+[x] Initialize a Python project with a virtual environment.
+[x] Install initial dependencies: pydantic-ai[examples], openai, python-dotenv.
+[x] Set up .env file for API keys (OpenAI, ElevenLabs).
+[x] 1.2: Define Core Data Schemas
 
-[ ] Create a schemas.py file.
-[ ] Define InterviewMessage(BaseModel) with speaker: str and content: str.
-[ ] Define InterviewTranscript(BaseModel) with messages: list[InterviewMessage].
-[ ] Define ArticleDraft(BaseModel) with title: str, content: str, version: int.
-[ ] Define EditorFeedback(BaseModel) with is_approved: bool, critiques: list[str].
-[ ] 1.3: Implement Agents using Pydantic AI
+[x] Create a schemas.py file.
+[x] Define InterviewMessage(BaseModel) with speaker: str and content: str.
+[x] Define InterviewTranscript(BaseModel) with messages: list[InterviewMessage].
+[x] Define ArticleDraft(BaseModel) with title: str, content: str, version: int.
+[x] Define EditorFeedback(BaseModel) with is_approved: bool, critiques: list[str].
+[x] 1.3: Implement Agents using Pydantic AI
 
-[ ] Create an agents.py file.
-[ ] Interviewer Agent:
-[ ] Define an InterviewerAgent using pydantic_ai.Agent.
-[ ] Give it a system prompt to act as a skilled interviewer.
-[ ] Create a (mocked) function that takes a topic and returns a pre-defined InterviewTranscript.
-[ ] Writer Agent:
-[ ] Define a WriterAgent using pydantic_ai.Agent.
-[ ] Set its output_type to the ArticleDraft Pydantic model.
-[ ] Give it a system prompt to write an article based on a transcript and target audience.
-[ ] Editor Agent:
-[ ] Define an EditorAgent using pydantic_ai.Agent.
-[ ] Set its output_type to the EditorFeedback Pydantic model.
-[ ] Give it a system prompt to critique an article draft and decide if it's publishable.
-[ ] 1.4: Orchestrate the Workflow
+[x] Create an agents.py file.
+[x] Interviewer Agent:
+[x] Define an InterviewerAgent using pydantic_ai.Agent.
+[x] Give it a system prompt to act as a skilled interviewer.
+[x] Create a (mocked) function that takes a topic and returns a pre-defined InterviewTranscript.
+[x] Writer Agent:
+[x] Define a WriterAgent using pydantic_ai.Agent.
+[x] Set its output_type to the ArticleDraft Pydantic model.
+[x] Give it a system prompt to write an article based on a transcript and target audience.
+[x] Editor Agent:
+[x] Define an EditorAgent using pydantic_ai.Agent.
+[x] Set its output_type to the EditorFeedback Pydantic model.
+[x] Give it a system prompt to critique an article draft and decide if it's publishable.
+[x] 1.4: Orchestrate the Workflow
 
-[ ] Create a main.py file.
-[ ] Use Pydantic AI's graph capabilities to define the workflow.
-[ ] The graph should flow: Interviewer -> Writer -> Editor.
-[ ] Implement a conditional edge after the Editor node:
-If is_approved == True, end the workflow.
-If is_approved == False, loop back to the Writer node, passing the feedback for the next iteration.
-[ ] Write a main function to run the entire process with a sample topic and print the final approved article.
+[x] Create a main.py file.
+[x] Use Pydantic AI's graph capabilities to define the workflow.
+[x] The graph should flow: Interviewer -> Writer -> Editor.
+[x] Implement a conditional edge after the Editor node:
+[x] If is_approved == True, end the workflow.
+[x] If is_approved == False, loop back to the Writer node, passing the feedback for the next iteration.
+[x] Write a main function to run the entire process with a sample topic and print the final approved article.
 Phase 2: API Backend & Persistence
 
 Objective: Expose the agent workflow via a robust, asynchronous API and persist the results.

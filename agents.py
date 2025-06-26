@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
 from schemas import InterviewTranscript, ArticleDraft, EditorFeedback
 from pydantic import BaseModel
+from pydantic_ai._run_context import RunContext
 
 # Interviewer Agent (mocked for now)
 class InterviewerInput(BaseModel):
@@ -14,10 +15,11 @@ interviewer_agent = Agent(
     system_prompt="You are a skilled interviewer. Your job is to conduct an in-depth interview on a given topic and return a structured transcript. Each message must have a speaker label.",
     input_type=InterviewerInput,
     output_type=InterviewerOutput,
+    model="openai:gpt-4.1-mini",
 )
 
 @interviewer_agent.tool
-def mock_interview(topic: str) -> InterviewTranscript:
+def mock_interview(ctx: RunContext[None], topic: str) -> InterviewTranscript:
     # This is a mocked function for demonstration
     return InterviewTranscript(messages=[
         {"speaker": "Interviewer", "content": f"Let's talk about {topic}. Why is it important?"},
@@ -37,6 +39,7 @@ writer_agent = Agent(
     name="WriterAgent",
     system_prompt=writer_system_prompt(),
     output_type=ArticleDraft,
+    model="openai:gpt-4.1-mini",
 )
 
 # Editor Agent
@@ -51,4 +54,5 @@ editor_agent = Agent(
     name="EditorAgent",
     system_prompt=editor_system_prompt(),
     output_type=EditorFeedback,
+    model="openai:gpt-4.1-mini",
 ) 
