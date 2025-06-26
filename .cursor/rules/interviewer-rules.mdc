@@ -32,3 +32,5 @@ Database (SQLite):
 Use SQLAlchemy Core or ORM for all database interactions to ensure safety and maintainability. Do not write raw SQL strings.
 
 Create an inital repo for this and the Github MPC to create backups regurally after each task.
+
+You can reference the PydanticAi docs in the @docs or use the Context7 MCP
