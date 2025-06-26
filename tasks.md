@@ -89,16 +89,16 @@ Phase 4: Front-End & Deployment (High-Level)
 
 Objective: Create a user interface and prepare the application for production.
 
-[ ] 4.1: Build a Simple Front-End
+[x] 4.1: Build a Simple Front-End
 
-[ ] Use a simple framework like Streamlit or basic HTML/JS.
-[ ] Implement client-side JavaScript to access the microphone (using WebRTC) and handle the WebSocket connection.
-[ ] Add UI elements to start an interview and display the final article.
-[ ] 4.2: Containerize the Application
+[x] Use a simple framework like Streamlit or basic HTML/JS.
+[x] Implement client-side JavaScript to access the microphone (using WebRTC) and handle the WebSocket connection.
+[x] Add UI elements to start an interview and display the final article.
+[x] 4.2: Containerize the Application
 
-[ ] Write a Dockerfile for the FastAPI application.
-[ ] Use Docker Compose to manage the application and any future services.
-[ ] 4.3: Prepare for Deployment
+[x] Write a Dockerfile for the FastAPI application.
+[x] Use Docker Compose to manage the application and any future services.
+[x] 4.3: Prepare for Deployment
 
-[ ] Configure environment variables for production.
-[ ] Write scripts for deploying the container to a cloud service (e.g., AWS, GCP, Azure).
+[x] Configure environment variables for production.
+[x] Write scripts for deploying the container to a cloud service (e.g., AWS, GCP, Azure).
