@@ -13,6 +13,7 @@ from api.interview_handler import handle_interview_audio_stream
 from api.auth_routes import router as auth_router
 from api.template_routes import router as template_router
 from api.analytics_routes import router as analytics_router
+from api.export_routes import router as export_router
 from auth.auth_utils import get_current_active_user
 from schemas import InterviewTranscript, ArticleDraft
 from db.models import User
@@ -27,6 +28,9 @@ app.include_router(template_router)
 
 # Include analytics routes
 app.include_router(analytics_router)
+
+# Include export routes
+app.include_router(export_router)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
