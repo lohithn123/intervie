@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from db.database import AsyncSessionLocal
 from db import crud
@@ -80,6 +80,23 @@ async def get_interview_result(job_id: int, db: AsyncSession = Depends(get_db)):
     if not article:
         raise HTTPException(status_code=404, detail="Article not found or not ready.")
     return ArticleResponse(title=article.title, content=article.content, version=article.version)
+
+@app.websocket("/interviews/stream/{job_id}")
+async def interview_audio_stream(websocket: WebSocket, job_id: int):
+    await websocket.accept()
+    try:
+        while True:
+            # Receive audio chunk from client
+            audio_chunk = await websocket.receive_bytes()
+            # TODO: Transcribe audio_chunk using ElevenLabs STT
+            # transcript = await transcribe_audio(audio_chunk)
+            # TODO: Pass transcript to InterviewerAgent and get response
+            # TODO: Synthesize response using ElevenLabs TTS
+            # audio_response = await synthesize_speech(response_text)
+            # For now, just echo back the received audio
+            await websocket.send_bytes(audio_chunk)
+    except WebSocketDisconnect:
+        pass
 
 @app.get("/")
 def root():
