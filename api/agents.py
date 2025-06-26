@@ -1,7 +1,6 @@
 from pydantic_ai import Agent
 from schemas import InterviewTranscript, ArticleDraft, EditorFeedback
 from pydantic import BaseModel
-from pydantic_ai._run_context import RunContext
 
 # Interviewer Agent (mocked for now)
 class InterviewerInput(BaseModel):
@@ -19,8 +18,9 @@ interviewer_agent = Agent(
 )
 
 @interviewer_agent.tool
-def mock_interview(ctx: RunContext[None], topic: str) -> InterviewTranscript:
-    # This is a mocked function for demonstration
+def mock_interview(*args, **kwargs) -> InterviewTranscript:
+    # Accepts topic as first arg or kwarg
+    topic = args[0] if args else kwargs.get('topic', 'Unknown Topic')
     return InterviewTranscript(messages=[
         {"speaker": "Interviewer", "content": f"Let's talk about {topic}. Why is it important?"},
         {"speaker": "Interviewee", "content": "It's important because it impacts many lives."},
