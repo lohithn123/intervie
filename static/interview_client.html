@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Interviewer - Voice Client</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #4caf50;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-right: 10px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        background: #f0f0f0;
+        font-size: 14px;
+      }
+      #status.interviewing {
+        background: #e3f2fd;
+        color: #1976d2;
+      }
+      #status.completed {
+        background: #e8f5e9;
+        color: #388e3c;
+      }
+      #status.error {
+        background: #ffebee;
+        color: #c62828;
+      }
+      #audioVisualizer {
+        width: 100%;
+        height: 100px;
+        margin: 20px 0;
+        background: #f5f5f5;
+        border-radius: 8px;
+        display: none;
+      }
+      .transcript {
+        margin-top: 20px;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        background: #fafafa;
+      }
+      .message {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 6px;
+      }
+      .message.interviewer {
+        background: #e3f2fd;
+        margin-right: 20%;
+      }
+      .message.interviewee {
+        background: #f3e5f5;
+        margin-left: 20%;
+      }
+      .speaker {
+        font-weight: 600;
+        margin-bottom: 5px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎤 AI Interviewer Platform</h1>
+
+      <div id="setupForm">
+        <div class="form-group">
+          <label for="topic">Interview Topic:</label>
+          <input
+            type="text"
+            id="topic"
+            placeholder="e.g., AI Ethics, Climate Change, Remote Work"
+            value="AI Ethics"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="audience">Target Audience:</label>
+          <select id="audience">
+            <option value="General Public">General Public</option>
+            <option value="Developers" selected>Developers</option>
+            <option value="Business Leaders">Business Leaders</option>
+            <option value="Students">Students</option>
+            <option value="Researchers">Researchers</option>
+          </select>
+        </div>
+
+        <button id="startTextBtn" onclick="startInterview('text')">
+          📝 Start Text Interview (Demo)
+        </button>
+        <button id="startVoiceBtn" onclick="startInterview('voice')">
+          🎙️ Start Voice Interview
+        </button>
+      </div>
+
+      <div id="status"></div>
+
+      <canvas id="audioVisualizer"></canvas>
+
+      <div id="interviewControls" style="display: none">
+        <button id="muteBtn" onclick="toggleMute()">🔇 Mute</button>
+        <button id="endBtn" onclick="endInterview()">⏹️ End Interview</button>
+      </div>
+
+      <div id="transcript" class="transcript" style="display: none">
+        <h3>Interview Transcript</h3>
+        <div id="messages"></div>
+      </div>
+
+      <div id="result" style="display: none; margin-top: 20px">
+        <h3>Generated Article</h3>
+        <div
+          id="articleContent"
+          style="padding: 20px; background: #f9f9f9; border-radius: 8px"
+        ></div>
+      </div>
+    </div>
+
+    <script>
+      let ws = null;
+      let mediaRecorder = null;
+      let audioContext = null;
+      let analyser = null;
+      let currentJobId = null;
+      let checkInterval = null;
+
+      function updateStatus(message, type = "info") {
+        const status = document.getElementById("status");
+        status.textContent = message;
+        status.className = type;
+        status.style.display = "block";
+      }
+
+      function addMessage(speaker, content) {
+        const messagesDiv = document.getElementById("messages");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${speaker.toLowerCase()}`;
+
+        const speakerDiv = document.createElement("div");
+        speakerDiv.className = "speaker";
+        speakerDiv.textContent = speaker + ":";
+
+        const contentDiv = document.createElement("div");
+        contentDiv.textContent = content;
+
+        messageDiv.appendChild(speakerDiv);
+        messageDiv.appendChild(contentDiv);
+        messagesDiv.appendChild(messageDiv);
+
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      async function startInterview(mode) {
+        const topic = document.getElementById("topic").value;
+        const audience = document.getElementById("audience").value;
+
+        if (!topic) {
+          updateStatus("Please enter a topic", "error");
+          return;
+        }
+
+        updateStatus("Starting interview...", "info");
+        document.getElementById("setupForm").style.display = "none";
+
+        try {
+          // Start the interview
+          const response = await fetch("/interviews/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topic, target_audience: audience, mode }),
+          });
+
+          const data = await response.json();
+          currentJobId = data.job_id;
+
+          if (mode === "voice") {
+            // Start voice interview via WebSocket
+            document.getElementById("transcript").style.display = "block";
+            await startVoiceInterview(currentJobId);
+          } else {
+            // Poll for text interview completion
+            updateStatus("Processing interview...", "info");
+            checkInterval = setInterval(() => checkStatus(currentJobId), 2000);
+          }
+        } catch (error) {
+          updateStatus(`Error: ${error.message}`, "error");
+          document.getElementById("setupForm").style.display = "block";
+        }
+      }
+
+      async function startVoiceInterview(jobId) {
+        try {
+          // Request microphone access
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+
+          // Setup audio visualization
+          audioContext = new AudioContext();
+          analyser = audioContext.createAnalyser();
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(analyser);
+
+          // Setup WebSocket connection
+          const wsUrl = `ws://localhost:8000/interviews/stream/${jobId}`;
+          ws = new WebSocket(wsUrl);
+
+          ws.onopen = () => {
+            updateStatus("Connected. Starting interview...", "interviewing");
+            document.getElementById("interviewControls").style.display =
+              "block";
+            document.getElementById("audioVisualizer").style.display = "block";
+
+            // Setup MediaRecorder
+            mediaRecorder = new MediaRecorder(stream, {
+              mimeType: "audio/webm;codecs=opus",
+            });
+
+            mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+                ws.send(event.data);
+              }
+            };
+
+            // Start recording in chunks
+            mediaRecorder.start(100); // 100ms chunks
+            visualizeAudio();
+          };
+
+          ws.onmessage = async (event) => {
+            // Received audio from interviewer
+            if (event.data instanceof Blob) {
+              const audioUrl = URL.createObjectURL(event.data);
+              const audio = new Audio(audioUrl);
+              audio.play();
+            }
+          };
+
+          ws.onclose = (event) => {
+            if (event.code === 1000) {
+              updateStatus(
+                "Interview completed! Generating article...",
+                "completed"
+              );
+              // Start checking for article completion
+              checkInterval = setInterval(
+                () => checkStatus(currentJobId),
+                2000
+              );
+            } else {
+              updateStatus(`Connection closed: ${event.reason}`, "error");
+            }
+            cleanup();
+          };
+
+          ws.onerror = (error) => {
+            updateStatus(`WebSocket error: ${error}`, "error");
+            cleanup();
+          };
+        } catch (error) {
+          updateStatus(
+            `Failed to start voice interview: ${error.message}`,
+            "error"
+          );
+          document.getElementById("setupForm").style.display = "block";
+        }
+      }
+
+      function visualizeAudio() {
+        const canvas = document.getElementById("audioVisualizer");
+        const ctx = canvas.getContext("2d");
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 100;
+
+        function draw() {
+          if (!analyser) return;
+
+          requestAnimationFrame(draw);
+          analyser.getByteFrequencyData(dataArray);
+
+          ctx.fillStyle = "#f5f5f5";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const barWidth = (canvas.width / bufferLength) * 2.5;
+          let barHeight;
+          let x = 0;
+
+          for (let i = 0; i < bufferLength; i++) {
+            barHeight = (dataArray[i] / 255) * canvas.height;
+            ctx.fillStyle = `rgb(76, 175, ${80 + dataArray[i] / 2})`;
+            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+          }
+        }
+
+        draw();
+      }
+
+      async function checkStatus(jobId) {
+        try {
+          const response = await fetch(`/interviews/${jobId}/status`);
+          const data = await response.json();
+
+          if (data.status === "completed") {
+            clearInterval(checkInterval);
+            await fetchResult(jobId);
+          } else if (
+            data.status.startsWith("failed") ||
+            data.status.startsWith("error")
+          ) {
+            clearInterval(checkInterval);
+            updateStatus(`Interview failed: ${data.status}`, "error");
+            document.getElementById("setupForm").style.display = "block";
+          }
+        } catch (error) {
+          clearInterval(checkInterval);
+          updateStatus(`Error checking status: ${error.message}`, "error");
+        }
+      }
+
+      async function fetchResult(jobId) {
+        try {
+          const response = await fetch(`/interviews/${jobId}/result`);
+          const article = await response.json();
+
+          updateStatus("Article generated successfully!", "completed");
+
+          const resultDiv = document.getElementById("result");
+          const contentDiv = document.getElementById("articleContent");
+
+          contentDiv.innerHTML = `
+                    <h2>${article.title}</h2>
+                    <p style="color: #666; font-size: 14px;">Version ${
+                      article.version
+                    }</p>
+                    <div style="margin-top: 20px; line-height: 1.6;">
+                        ${article.content
+                          .split("\n")
+                          .map((p) => `<p>${p}</p>`)
+                          .join("")}
+                    </div>
+                `;
+
+          resultDiv.style.display = "block";
+        } catch (error) {
+          updateStatus(`Error fetching result: ${error.message}`, "error");
+        }
+      }
+
+      function toggleMute() {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.pause();
+          document.getElementById("muteBtn").textContent = "🔊 Unmute";
+        } else if (mediaRecorder && mediaRecorder.state === "paused") {
+          mediaRecorder.resume();
+          document.getElementById("muteBtn").textContent = "🔇 Mute";
+        }
+      }
+
+      function endInterview() {
+        if (ws) {
+          ws.close(1000, "User ended interview");
+        }
+        cleanup();
+      }
+
+      function cleanup() {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        }
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+          analyser = null;
+        }
+        document.getElementById("interviewControls").style.display = "none";
+        document.getElementById("audioVisualizer").style.display = "none";
+      }
+    </script>
+  </body>
+</html>

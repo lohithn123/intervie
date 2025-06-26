@@ -69,22 +69,22 @@ Phase 3: Voice Integration
 
 Objective: Replace the mocked text input with a real-time voice interface.
 
-[ ] 3.1: Integrate ElevenLabs SDK
+[x] 3.1: Integrate ElevenLabs SDK
 
-[ ] Install elevenlabs Python SDK.
-[ ] Create a voice_service.py to encapsulate STT and TTS logic.
-[ ] 3.2: Implement Real-Time Communication
+[x] Install elevenlabs Python SDK.
+[x] Create a voice_service.py to encapsulate STT and TTS logic.
+[x] 3.2: Implement Real-Time Communication
 
-[ ] Create a WebSocket endpoint in FastAPI: WS /interviews/stream/{job_id}.
-[ ] The client will stream microphone audio data to this endpoint.
-[ ] The server will stream audio data from the TTS service back to the client.
-[ ] 3.3: Connect Voice to Interviewer Agent
+[x] Create a WebSocket endpoint in FastAPI: WS /interviews/stream/{job_id}.
+[x] The client will stream microphone audio data to this endpoint.
+[x] The server will stream audio data from the TTS service back to the client.
+[x] 3.3: Connect Voice to Interviewer Agent
 
-[ ] In the WebSocket handler, receive audio chunks from the client.
-[ ] Send the audio to the ElevenLabs STT API for transcription.
-[ ] Pass the transcribed text to the InterviewerAgent.
-[ ] Take the agent's text response and send it to the ElevenLabs TTS API to generate audio.
-[ ] Stream the synthesized audio bytes back to the client over the WebSocket.
+[x] In the WebSocket handler, receive audio chunks from the client.
+[x] Send the audio to the ElevenLabs STT API for transcription.
+[x] Pass the transcribed text to the InterviewerAgent.
+[x] Take the agent's text response and send it to the ElevenLabs TTS API to generate audio.
+[x] Stream the synthesized audio bytes back to the client over the WebSocket.
 Phase 4: Front-End & Deployment (High-Level)
 
 Objective: Create a user interface and prepare the application for production.

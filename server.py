@@ -1,14 +1,20 @@
 from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from db.database import AsyncSessionLocal
 from db import crud
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import asyncio
-from api.agents import writer_agent, editor_agent, mock_interview
+from api.agents import writer_agent, editor_agent, mock_interview, WriterContext, EditorContext
+from api.interview_handler import handle_interview_audio_stream
 from schemas import InterviewTranscript, ArticleDraft
 
 app = FastAPI()
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # In-memory job status tracking (for demo)
 job_status = {}
@@ -22,6 +28,7 @@ async def get_db():
 class InterviewStartRequest(BaseModel):
     topic: str
     target_audience: str
+    mode: str = "text"  # "text" or "voice"
 
 class InterviewStartResponse(BaseModel):
     job_id: int
@@ -37,26 +44,60 @@ class ArticleResponse(BaseModel):
     content: str
     version: int
 
-async def run_workflow(interview_id: int, topic: str, target_audience: str):
+async def run_workflow(interview_id: int, topic: str, target_audience: str, transcript: Optional[InterviewTranscript] = None):
     job_status[interview_id] = "running"
-    # Step 1: Mock interview transcript
-    transcript: InterviewTranscript = mock_interview(None, topic)
-    # Step 2: Writer/Editor loop
-    version = 1
-    draft = None
-    while True:
-        draft_result = await writer_agent.run(transcript=transcript, target_audience=target_audience, version=version)
-        draft: ArticleDraft = draft_result.output
-        feedback_result = await editor_agent.run(draft=draft)
-        feedback = feedback_result.output
-        if feedback.is_approved:
-            break
-        version += 1
-    # Step 3: Save transcript and article to DB
-    async with AsyncSessionLocal() as session:
-        await crud.update_interview_transcript(session, interview_id, transcript.json())
-        await crud.create_article(session, interview_id, draft.title, draft.content, draft.version)
-    job_status[interview_id] = "completed"
+    
+    try:
+        # Step 1: Use provided transcript or generate mock interview
+        if transcript is None:
+            transcript = mock_interview(topic)
+        
+        # Step 2: Writer/Editor loop
+        version = 1
+        draft = None
+        editor_feedback = []
+        
+        while True:
+            # Create writer context
+            writer_ctx = WriterContext(
+                transcript=transcript,
+                target_audience=target_audience,
+                version=version,
+                editor_feedback=editor_feedback
+            )
+            
+            # Generate article draft
+            draft_result = await writer_agent.run(writer_ctx)
+            draft = draft_result.data
+            
+            # Create editor context
+            editor_ctx = EditorContext(draft=draft)
+            
+            # Get editor feedback
+            feedback_result = await editor_agent.run(editor_ctx)
+            feedback = feedback_result.data
+            
+            if feedback.is_approved:
+                break
+            
+            # Prepare for next iteration
+            editor_feedback = feedback.critiques
+            version += 1
+            
+            # Safety check to prevent infinite loops
+            if version > 5:
+                break
+        
+        # Step 3: Save transcript and article to DB
+        async with AsyncSessionLocal() as session:
+            await crud.update_interview_transcript(session, interview_id, transcript.model_dump_json())
+            await crud.create_article(session, interview_id, draft.title, draft.content, draft.version)
+        
+        job_status[interview_id] = "completed"
+        
+    except Exception as e:
+        job_status[interview_id] = f"failed: {str(e)}"
+        raise
 
 @app.post("/interviews/start", response_model=InterviewStartResponse)
 async def start_interview(
@@ -66,7 +107,14 @@ async def start_interview(
 ):
     interview = await crud.create_interview(db, req.topic, req.target_audience)
     job_status[interview.id] = "pending"
-    background_tasks.add_task(run_workflow, interview.id, req.topic, req.target_audience)
+    
+    if req.mode == "text":
+        # Traditional text-based workflow
+        background_tasks.add_task(run_workflow, interview.id, req.topic, req.target_audience)
+    else:
+        # Voice mode - will be handled via WebSocket
+        job_status[interview.id] = "waiting_for_voice"
+    
     return InterviewStartResponse(job_id=interview.id)
 
 @app.get("/interviews/{job_id}/status", response_model=InterviewStatusResponse)
@@ -82,22 +130,38 @@ async def get_interview_result(job_id: int, db: AsyncSession = Depends(get_db)):
     return ArticleResponse(title=article.title, content=article.content, version=article.version)
 
 @app.websocket("/interviews/stream/{job_id}")
-async def interview_audio_stream(websocket: WebSocket, job_id: int):
+async def interview_audio_stream(websocket: WebSocket, job_id: int, db: AsyncSession = Depends(get_db)):
     await websocket.accept()
+    
+    # Get interview details
+    interview = await crud.get_interview(db, job_id)
+    if not interview:
+        await websocket.close(code=4004, reason="Interview not found")
+        return
+    
+    job_status[job_id] = "interviewing"
+    
     try:
-        while True:
-            # Receive audio chunk from client
-            audio_chunk = await websocket.receive_bytes()
-            # TODO: Transcribe audio_chunk using ElevenLabs STT
-            # transcript = await transcribe_audio(audio_chunk)
-            # TODO: Pass transcript to InterviewerAgent and get response
-            # TODO: Synthesize response using ElevenLabs TTS
-            # audio_response = await synthesize_speech(response_text)
-            # For now, just echo back the received audio
-            await websocket.send_bytes(audio_chunk)
+        # Conduct the voice interview
+        transcript = await handle_interview_audio_stream(
+            websocket=websocket,
+            interview_id=job_id,
+            topic=interview.topic,
+            target_audience=interview.target_audience
+        )
+        
+        # Close the WebSocket
+        await websocket.close(code=1000, reason="Interview completed")
+        
+        # Run the article generation workflow with the real transcript
+        await run_workflow(job_id, interview.topic, interview.target_audience, transcript)
+        
     except WebSocketDisconnect:
-        pass
+        job_status[job_id] = "disconnected"
+    except Exception as e:
+        job_status[job_id] = f"error: {str(e)}"
+        await websocket.close(code=4000, reason=str(e))
 
 @app.get("/")
 def root():
-    return {"message": "AI Interviewer API is running."} 
+    return FileResponse("static/interview_client.html") 

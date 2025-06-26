@@ -1,54 +1,75 @@
 from pydantic_ai import Agent
-from schemas import InterviewTranscript, ArticleDraft, EditorFeedback
+from schemas import InterviewTranscript, ArticleDraft, EditorFeedback, InterviewMessage
 from pydantic import BaseModel
+from typing import List
 
-# Interviewer Agent (mocked for now)
-class InterviewerInput(BaseModel):
-    topic: str
-
-class InterviewerOutput(InterviewTranscript):
-    pass
-
+# Interviewer Agent
 interviewer_agent = Agent(
-    name="InterviewerAgent",
-    system_prompt="You are a skilled interviewer. Your job is to conduct an in-depth interview on a given topic and return a structured transcript. Each message must have a speaker label.",
-    model="openai:gpt-4.1-mini",
+    "openai:gpt-4-1106-preview",
+    system_prompt=(
+        "You are a skilled interviewer conducting an in-depth interview. "
+        "Ask thoughtful, probing questions to explore the topic deeply. "
+        "Generate follow-up questions based on the interviewee's responses. "
+        "Maintain a professional yet conversational tone."
+    ),
+    deps_type=None,
+    result_type=InterviewTranscript,
 )
 
-@interviewer_agent.tool
-def mock_interview(*args, **kwargs) -> InterviewTranscript:
-    # Accepts topic as first arg or kwarg
-    topic = args[0] if args else kwargs.get('topic', 'Unknown Topic')
+# Mock interview function for testing (before voice integration)
+def mock_interview(topic: str) -> InterviewTranscript:
+    """Generate a mock interview transcript for testing purposes."""
     return InterviewTranscript(messages=[
-        {"speaker": "Interviewer", "content": f"Let's talk about {topic}. Why is it important?"},
-        {"speaker": "Interviewee", "content": "It's important because it impacts many lives."},
-        {"speaker": "Interviewer", "content": "What are the biggest challenges?"},
-        {"speaker": "Interviewee", "content": "The biggest challenges are awareness and resources."},
+        InterviewMessage(speaker="Interviewer", content=f"Today we're discussing {topic}. Can you tell me why this topic is important in today's context?"),
+        InterviewMessage(speaker="Interviewee", content="This topic is crucial because it affects how we approach modern challenges in technology and society."),
+        InterviewMessage(speaker="Interviewer", content="What are the main challenges you see in this area?"),
+        InterviewMessage(speaker="Interviewee", content="The biggest challenges include lack of awareness, resource constraints, and the need for better collaboration."),
+        InterviewMessage(speaker="Interviewer", content="How do you think we can address these challenges effectively?"),
+        InterviewMessage(speaker="Interviewee", content="We need a multi-faceted approach involving education, policy changes, and technological innovation."),
     ])
 
-# Writer Agent
-def writer_system_prompt():
-    return (
-        "You are a professional writer. Given an interview transcript and a target audience, write a clear, engaging article draft. "
-        "Your output must be structured as an ArticleDraft Pydantic model."
-    )
+# Writer Agent with structured context handling
+class WriterContext(BaseModel):
+    transcript: InterviewTranscript
+    target_audience: str
+    version: int
+    editor_feedback: List[str] = []
 
 writer_agent = Agent(
-    name="WriterAgent",
-    system_prompt=writer_system_prompt(),
-    model="openai:gpt-4.1-mini",
+    "openai:gpt-4-1106-preview",
+    system_prompt=(
+        "You are a professional writer creating articles from interview transcripts. "
+        "Analyze the interview content and create a well-structured, engaging article. "
+        "Tailor the tone and complexity to the target audience. "
+        "If editor feedback is provided, address all critiques in your revision. "
+        "Include a compelling title that captures the essence of the interview."
+    ),
+    deps_type=WriterContext,
+    result_type=ArticleDraft,
 )
 
+@writer_agent.system_prompt
+def writer_dynamic_prompt(ctx: WriterContext) -> str:
+    base_prompt = writer_agent._system_prompt
+    if ctx.editor_feedback:
+        feedback_text = "\n".join(f"- {critique}" for critique in ctx.editor_feedback)
+        return f"{base_prompt}\n\nEditor feedback from previous version:\n{feedback_text}\n\nAddress all these points in your revision."
+    return base_prompt
+
 # Editor Agent
-def editor_system_prompt():
-    return (
-        "You are a critical editor. Review the article draft for clarity, tone, and factual consistency. "
-        "Provide actionable critiques and set is_approved to True only if the article is ready for publication. "
-        "Your output must be structured as an EditorFeedback Pydantic model."
-    )
+class EditorContext(BaseModel):
+    draft: ArticleDraft
 
 editor_agent = Agent(
-    name="EditorAgent",
-    system_prompt=editor_system_prompt(),
-    model="openai:gpt-4.1-mini",
+    "openai:gpt-4-1106-preview",
+    system_prompt=(
+        "You are a critical editor reviewing article drafts. "
+        "Evaluate the article for: clarity, coherence, factual accuracy, tone consistency, "
+        "engagement level, and alignment with best practices in journalism. "
+        "Provide specific, actionable feedback. "
+        "Only approve (is_approved=true) if the article meets professional publication standards. "
+        "Be thorough but constructive in your critiques."
+    ),
+    deps_type=EditorContext,
+    result_type=EditorFeedback,
 ) 
