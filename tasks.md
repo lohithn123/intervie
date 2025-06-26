@@ -45,26 +45,26 @@ Phase 2: API Backend & Persistence
 
 Objective: Expose the agent workflow via a robust, asynchronous API and persist the results.
 
-[ ] 2.1: Setup FastAPI Application
+[x] 2.1: Setup FastAPI Application
 
-[ ] Install fastapi, uvicorn[standard], sqlalchemy.
-[ ] Create a server.py file and initialize a FastAPI app.
-[ ] Structure the project into logical directories (e.g., api, agents, db).
-[ ] 2.2: Create Database Models & Logic
+[x] Install fastapi, uvicorn[standard], sqlalchemy.
+[x] Create a server.py file and initialize a FastAPI app.
+[x] Structure the project into logical directories (e.g., api, agents, db).
+[x] 2.2: Create Database Models & Logic
 
-[ ] Create a database.py file to handle SQLite connection.
-[ ] Create a models.py file using SQLAlchemy to define tables for Interviews and Articles.
-[ ] Write CRUD functions to save and retrieve interview transcripts and article drafts.
-[ ] 2.3: Develop API Endpoints
+[x] Create a database.py file to handle SQLite connection.
+[x] Create a models.py file using SQLAlchemy to define tables for Interviews and Articles.
+[x] Write CRUD functions to save and retrieve interview transcripts and article drafts.
+[x] 2.3: Develop API Endpoints
 
-[ ] Create an endpoint POST /interviews/start that accepts a topic and target audience.
-[ ] This endpoint should immediately return a job_id and trigger the agent workflow in the background.
-[ ] Create an endpoint GET /interviews/{job_id}/status to check the progress.
-[ ] Create an endpoint GET /interviews/{job_id}/result to fetch the final article.
-[ ] 2.4: Integrate Background Tasks
+[x] Create an endpoint POST /interviews/start that accepts a topic and target audience.
+[x] This endpoint should immediately return a job_id and trigger the agent workflow in the background.
+[x] Create an endpoint GET /interviews/{job_id}/status to check the progress.
+[x] Create an endpoint GET /interviews/{job_id}/result to fetch the final article.
+[x] 2.4: Integrate Background Tasks
 
-[ ] In the POST /interviews/start endpoint, use BackgroundTasks to run the main agent orchestration function.
-[ ] Ensure the background task updates the job status and saves the final result to the SQLite database.
+[x] In the POST /interviews/start endpoint, use BackgroundTasks to run the main agent orchestration function.
+[x] Ensure the background task updates the job status and saves the final result to the SQLite database.
 Phase 3: Voice Integration
 
 Objective: Replace the mocked text input with a real-time voice interface.

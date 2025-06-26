@@ -12,8 +12,6 @@ class InterviewerOutput(InterviewTranscript):
 interviewer_agent = Agent(
     name="InterviewerAgent",
     system_prompt="You are a skilled interviewer. Your job is to conduct an in-depth interview on a given topic and return a structured transcript. Each message must have a speaker label.",
-    input_type=InterviewerInput,
-    output_type=InterviewerOutput,
     model="openai:gpt-4.1-mini",
 )
 
@@ -38,7 +36,6 @@ def writer_system_prompt():
 writer_agent = Agent(
     name="WriterAgent",
     system_prompt=writer_system_prompt(),
-    output_type=ArticleDraft,
     model="openai:gpt-4.1-mini",
 )
 
@@ -53,6 +50,5 @@ def editor_system_prompt():
 editor_agent = Agent(
     name="EditorAgent",
     system_prompt=editor_system_prompt(),
-    output_type=EditorFeedback,
     model="openai:gpt-4.1-mini",
 ) 
